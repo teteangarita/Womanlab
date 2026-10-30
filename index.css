@@ -938,6 +938,58 @@ input:checked + .slider:before {
   overflow: hidden;
 }
 
+.beverage-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.beverage-visual > i {
+  font-size: 4.5rem;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35));
+}
+
+.beverage-water-still {
+  background: linear-gradient(145deg, #178f9e, #73d6c5);
+}
+
+.beverage-water-sparkling {
+  background: linear-gradient(145deg, #2875a8, #8bd9ec);
+}
+
+.beverage-gatorade {
+  background: linear-gradient(145deg, #d65b18, #f3ad27);
+}
+
+.beverage-gatorlit {
+  background: linear-gradient(145deg, #4a8d35, #a5c83f);
+}
+
+.beverage-redbull {
+  background: linear-gradient(145deg, #164b87, #c73d44);
+}
+
+.beverage-bubbles,
+.beverage-can-size {
+  position: absolute;
+  color: #fff;
+  font-weight: 800;
+}
+
+.beverage-bubbles {
+  top: 28%;
+  right: 29%;
+  font-size: 1.4rem;
+  letter-spacing: 0.25rem;
+}
+
+.beverage-can-size {
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 0.8rem;
+}
+
 .product-img {
   width: 100%;
   height: 100%;
@@ -995,70 +1047,36 @@ input:checked + .slider:before {
 
 .staff-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
 }
 
 .staff-card {
-  overflow: hidden;
+  min-height: 190px;
   display: flex;
-  flex-direction: column;
   text-align: center;
-}
-
-.staff-img-wrap {
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-bottom: 2px solid var(--primary);
-}
-
-.staff-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  transition: transform 0.4s ease;
-}
-
-.staff-card:hover .staff-img {
-  transform: scale(1.06);
+  align-items: center;
 }
 
 .staff-info {
-  padding: 1.25rem 1rem 1.5rem;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.4rem;
   flex-grow: 1;
 }
 
-.staff-name {
-  font-size: 1.15rem;
-}
-
 .staff-role {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--secondary);
 }
 
 .staff-desc {
   font-size: 0.85rem;
   color: var(--text-muted);
-}
-
-.staff-social {
-  margin-top: auto;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #fff;
-  text-decoration: none;
-}
-
-.staff-social:hover {
-  color: var(--accent-pink);
 }
 
 @media (max-width: 1100px) {

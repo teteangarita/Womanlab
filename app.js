@@ -19,13 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkoutModal = document.getElementById('checkoutModal');
   const btnCloseCheckoutModal = document.getElementById('btnCloseCheckoutModal');
   const modalPayAmount = document.getElementById('modalPayAmount');
-  const paymentForm = document.getElementById('paymentForm');
-
-  const successModal = document.getElementById('successModal');
-  const btnCloseSuccessModal = document.getElementById('btnCloseSuccessModal');
-  const receiptPaidTotal = document.getElementById('receiptPaidTotal');
-  const receiptItemsSummary = document.getElementById('receiptItemsSummary');
-  const receiptOrderNum = document.getElementById('receiptOrderNum');
+  const checkoutItemsList = document.getElementById('checkoutItemsList');
 
   const toast = document.getElementById('toast');
   const toastMsg = document.getElementById('toastMsg');
@@ -57,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cartSubtotal.textContent = '$0';
       cartDiscount.textContent = '$0';
       cartTotal.textContent = '$0';
+      modalPayAmount.textContent = '$0';
       return;
     }
 
@@ -268,94 +263,25 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     closeCart();
+    checkoutItemsList.replaceChildren();
+    cart.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'summary-row';
+
+      const description = document.createElement('span');
+      description.textContent = `${item.qty} x ${item.name}`;
+
+      const amount = document.createElement('span');
+      amount.textContent = formatCurrency(item.price * item.qty);
+
+      row.append(description, amount);
+      checkoutItemsList.append(row);
+    });
     checkoutModal.classList.add('open');
   });
 
   btnCloseCheckoutModal.addEventListener('click', () => {
     checkoutModal.classList.remove('open');
-  });
-
-  const ccNumberInput = document.getElementById('cc-number');
-  const ccExpInput = document.getElementById('cc-exp');
-  const custNameInput = document.getElementById('custName');
-
-  const previewCardNumber = document.getElementById('previewCardNumber');
-  const previewCardName = document.getElementById('previewCardName');
-  const previewCardExp = document.getElementById('previewCardExp');
-  const cardBrandIcon = document.getElementById('cardBrandIcon');
-
-  ccNumberInput.addEventListener('input', (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 16) value = value.slice(0, 16);
-    
-    const formatted = value.replace(/(.{4})/g, '$1 ').trim();
-    e.target.value = formatted;
-    previewCardNumber.textContent = formatted || '•••• •••• •••• ••••';
-
-    if (value.startsWith('4')) {
-      cardBrandIcon.className = 'fa-brands fa-cc-visa';
-    } else if (/^(5[1-5]|2[2-7])/.test(value)) {
-      cardBrandIcon.className = 'fa-brands fa-cc-mastercard';
-    } else if (/^3[47]/.test(value)) {
-      cardBrandIcon.className = 'fa-brands fa-cc-amex';
-    } else {
-      cardBrandIcon.className = 'fa-solid fa-credit-card';
-    }
-  });
-
-  ccExpInput.addEventListener('input', (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length > 4) val = val.slice(0, 4);
-
-    if (val.length >= 3) {
-      val = val.slice(0, 2) + '/' + val.slice(2);
-    }
-    e.target.value = val;
-    previewCardExp.textContent = val || 'MM/YY';
-  });
-
-  custNameInput.addEventListener('input', (e) => {
-    previewCardName.textContent = e.target.value.toUpperCase() || 'TU NOMBRE AQUÍ';
-  });
-
-  paymentForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const btnSubmit = document.getElementById('btnPayNowSubmit');
-    const originalText = btnSubmit.innerHTML;
-
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando Pago Seguro...';
-
-    setTimeout(() => {
-      btnSubmit.disabled = false;
-      btnSubmit.innerHTML = originalText;
-      checkoutModal.classList.remove('open');
-
-      const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-      const hasVIPPlan = cart.some(i => i.id === 'plan-vip');
-      const discount = hasVIPPlan ? subtotal * 0.15 : 0;
-      const totalPaid = subtotal - discount;
-
-      receiptPaidTotal.textContent = formatCurrency(totalPaid);
-      receiptOrderNum.textContent = 'Orden #GWL-' + Math.floor(10000 + Math.random() * 90000);
-
-      receiptItemsSummary.innerHTML = cart.map(item => `
-        <div style="display:flex; justify-content:space-between; margin-bottom: 0.3rem;">
-          <span>${item.qty}x ${item.name}</span>
-          <span>${formatCurrency(item.price * item.qty)}</span>
-        </div>
-      `).join('');
-
-      cart = [];
-      updateCartUI();
-
-      successModal.classList.add('open');
-    }, 1800);
-  });
-
-  btnCloseSuccessModal.addEventListener('click', () => {
-    successModal.classList.remove('open');
   });
 
 });
