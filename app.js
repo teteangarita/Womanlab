@@ -1,7 +1,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   let cart = [];
-  let currentBillingCycle = 'monthly'; // 'monthly' or 'quarterly'
+  let currentBillingCycle = 'monthly';
   let selectedSlotTime = '07:00 AM';
   let selectedDiscipline = 'Musculación & Cardio';
 
@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const cartItemsList = document.getElementById('cartItemsList');
   const cartCountBadge = document.getElementById('cartCountBadge');
   const cartSubtotal = document.getElementById('cartSubtotal');
-  const cartDiscount = document.getElementById('cartDiscount');
   const cartTotal = document.getElementById('cartTotal');
   const btnProceedToCheckout = document.getElementById('btnProceedToCheckout');
 
@@ -49,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       cartSubtotal.textContent = '$0';
-      cartDiscount.textContent = '$0';
       cartTotal.textContent = '$0';
       modalPayAmount.textContent = '$0';
       return;
@@ -78,14 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    const hasVIPPlan = cart.some(i => i.id === 'plan-vip');
-    const discount = hasVIPPlan ? subtotal * 0.15 : 0;
-    const finalTotal = subtotal - discount;
-
     cartSubtotal.textContent = formatCurrency(subtotal);
-    cartDiscount.textContent = discount > 0 ? `-${formatCurrency(discount)}` : '$0';
-    cartTotal.textContent = formatCurrency(finalTotal);
-    modalPayAmount.textContent = formatCurrency(finalTotal);
+    cartTotal.textContent = formatCurrency(subtotal);
+    modalPayAmount.textContent = formatCurrency(subtotal);
   }
 
   function addToCart(id, name, price, img) {
@@ -142,15 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.btn-add-plan').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      const name = btn.dataset.name;
-      let price = Number(btn.dataset.price);
-
-      if (currentBillingCycle === 'quarterly') {
-        price = price * 3 * 0.85; // 15% discount for 3 months
-      }
-
-      addToCart(id, name, price, 'assets/images/hero_gym.png');
+      addToCart(btn.dataset.id, btn.dataset.name, Number(btn.dataset.price), 'assets/images/hero_gym.png');
       openCart();
     });
   });
@@ -178,34 +163,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const billingCycleToggle = document.getElementById('billingCycleToggle');
-  const priceStandard = document.getElementById('priceStandard');
-  const pricePro = document.getElementById('pricePro');
-  const priceVip = document.getElementById('priceVip');
-  const labelMonthly = document.getElementById('labelMonthly');
-  const labelQuarterly = document.getElementById('labelQuarterly');
+  const membershipPrices = {
+    monthly: { amount: 40000, label: 'Mensual', term: 'mes' },
+    quarterly: { amount: 105000, label: 'Trimestral', term: 'trimestre' },
+    semiannual: { amount: 192000, label: 'Semestral', term: 'semestre' },
+    annual: { amount: 336000, label: 'Anual', term: 'año' }
+  };
+  const membershipPrice = document.getElementById('priceStandard');
+  const membershipButton = document.querySelector('.btn-add-plan');
 
-  if (billingCycleToggle) {
-    billingCycleToggle.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        currentBillingCycle = 'quarterly';
-        labelQuarterly.classList.add('active');
-        labelMonthly.classList.remove('active');
-        
-        priceStandard.innerHTML = `$${Math.round(35000 * 3 * 0.85).toLocaleString('es-CL')} <span>/ trimestral</span>`;
-        pricePro.innerHTML = `$${Math.round(55000 * 3 * 0.85).toLocaleString('es-CL')} <span>/ trimestral</span>`;
-        priceVip.innerHTML = `$${Math.round(85000 * 3 * 0.85).toLocaleString('es-CL')} <span>/ trimestral</span>`;
-      } else {
-        currentBillingCycle = 'monthly';
-        labelMonthly.classList.add('active');
-        labelQuarterly.classList.remove('active');
+  document.querySelectorAll('.cycle-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      currentBillingCycle = button.dataset.cycle;
+      const selectedPrice = membershipPrices[currentBillingCycle];
 
-        priceStandard.innerHTML = '$35.000 <span>/ mes</span>';
-        pricePro.innerHTML = '$55.000 <span>/ mes</span>';
-        priceVip.innerHTML = '$85.000 <span>/ mes</span>';
-      }
+      document.querySelectorAll('.cycle-btn').forEach(option => {
+        const isSelected = option === button;
+        option.classList.toggle('active', isSelected);
+        option.setAttribute('aria-pressed', String(isSelected));
+      });
+
+      membershipPrice.innerHTML = `${formatCurrency(selectedPrice.amount)} <span>/ ${selectedPrice.term}</span>`;
+      membershipButton.dataset.price = String(selectedPrice.amount);
+      membershipButton.dataset.name = `Membresía Woman Lab (${selectedPrice.label})`;
     });
-  }
+  });
 
   const disciplineFilter = document.getElementById('disciplineFilter');
   const selectedDisciplineText = document.getElementById('selectedDisciplineText');

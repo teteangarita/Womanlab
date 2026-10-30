@@ -137,77 +137,34 @@
     <div class="container">
       <div class="section-title-wrap">
         <span class="section-tag">Planes Flexibles</span>
-        <h2 class="section-title">Membresías Mensuales</h2>
-        <p class="section-subtitle">Elige el plan que mejor se adapte a tus metas deportivas en Woman Lab. Cancela cuando quieras.</p>
+        <h2 class="section-title">Membresía Woman Lab</h2>
+        <p class="section-subtitle">Elige la duración de tu membresía y entrena en Woman Lab.</p>
       </div>
 
-      <div class="billing-toggle-wrap">
-        <span class="billing-label active" id="labelMonthly">Pago Mensual</span>
-        <label class="switch">
-          <input type="checkbox" id="billingCycleToggle">
-          <span class="slider"></span>
-        </label>
-        <span class="billing-label" id="labelQuarterly">
-          Plan Trimestral <span class="discount-badge">15% OFF</span>
-        </span>
+      <div class="billing-options" role="group" aria-label="Duración de la membresía">
+        <button type="button" class="cycle-btn active" data-cycle="monthly" aria-pressed="true">Mensual</button>
+        <button type="button" class="cycle-btn" data-cycle="quarterly" aria-pressed="false">Trimestral</button>
+        <button type="button" class="cycle-btn" data-cycle="semiannual" aria-pressed="false">Semestral</button>
+        <button type="button" class="cycle-btn" data-cycle="annual" aria-pressed="false">Anual</button>
       </div>
 
       <div class="pricing-grid">
-        <div class="glass-panel glass-panel-hover pricing-card">
+        <div class="glass-panel glass-panel-hover pricing-card membership-card">
           <div>
-            <h3 class="card-plan-title">Plan Standard</h3>
-            <p class="card-plan-desc">Ideal para iniciar tu rutina diaria de entrenamiento libre.</p>
+            <h3 class="card-plan-title">Membresía Única</h3>
+            <p class="card-plan-desc">Acceso a la zona de musculación y cardio, app de rutinas, lockers y duchas.</p>
             <div class="card-price" id="priceStandard">
-              $35.000 <span>/ mes</span>
+              $40.000 <span>/ mes</span>
             </div>
             <ul class="plan-features">
               <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> Pase libre zona musculación & cardio</li>
               <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> App de seguimiento de rutinas</li>
               <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> Lockers y duchas de agua caliente</li>
             </ul>
+            <p class="card-plan-desc membership-note">Nutrición y kinesiología se reservan por separado.</p>
           </div>
-          <button class="btn btn-secondary btn-add-plan" data-id="plan-standard" data-name="Plan Standard (Membresía Mensual)" data-price="35000" style="width: 100%;">
-            Suscribirme al Plan
-          </button>
-        </div>
-
-        <div class="glass-panel glass-panel-hover pricing-card featured">
-          <span class="popular-badge"><i class="fa-solid fa-fire"></i> Más Elegido</span>
-          <div>
-            <h3 class="card-plan-title">Plan PRO High-Perf</h3>
-            <p class="card-plan-desc">Para deportistas que buscan resultados y clases dirigidas.</p>
-            <div class="card-price" id="pricePro">
-              $55.000 <span>/ mes</span>
-            </div>
-            <ul class="plan-features">
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> Todo lo del Plan Standard</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> Acceso a Clases Dirigidas</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> 1 Evaluación Antropométrica Mensual</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> 10% Descuento en Tienda de Suplementos</li>
-            </ul>
-          </div>
-          <button class="btn btn-primary btn-add-plan" data-id="plan-pro" data-name="Plan PRO High-Perf (Membresía Mensual)" data-price="55000" style="width: 100%;">
-            Suscribirme al Plan PRO
-          </button>
-        </div>
-
-        <div class="glass-panel glass-panel-hover pricing-card">
-          <div>
-            <h3 class="card-plan-title">Plan VIP Black</h3>
-            <p class="card-plan-desc">Experiencia All-Access con servicios de salud incluidos.</p>
-            <div class="card-price" id="priceVip">
-              $85.000 <span>/ mes</span>
-            </div>
-            <ul class="plan-features">
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> All Access Total 24/7</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> 1 Consulta Nutricionista Incluida al mes</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> 1 Sesión Kinesiología / Masaje Deportivo</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> Prioridad en Reserva de Horas y Talleres</li>
-              <li class="plan-feature-item"><span class="check-icon"><i class="fa-solid fa-check"></i></span> 15% Descuento en Tienda</li>
-            </ul>
-          </div>
-          <button class="btn btn-secondary btn-add-plan" data-id="plan-vip" data-name="Plan VIP Black (Membresía Mensual)" data-price="85000" style="width: 100%;">
-            Obtener Experiencia VIP
+          <button class="btn btn-primary btn-add-plan" data-id="plan-membership" data-name="Membresía Woman Lab (Mensual)" data-price="40000" style="width: 100%;">
+            Agregar membresía al carrito
           </button>
         </div>
       </div>
@@ -515,10 +472,6 @@
       <div class="summary-row">
         <span>Subtotal</span>
         <span id="cartSubtotal">$0</span>
-      </div>
-      <div class="summary-row">
-        <span>Descuento Miembro</span>
-        <span id="cartDiscount" style="color: var(--primary);">$0</span>
       </div>
       <div class="summary-row total">
         <span>Total a Pagar</span>
