@@ -5,9 +5,11 @@
 	"compatibility_date": "2026-11-02",
 	"workers_dev": true,
 	"vars": {
-		"HAULMER_API_URL": "https://frontend-api.payment.haulmer.dev/v1/payment",
+		"PAYMENT_PROVIDER": "haulmer",
 		"PAYMENT_ENV": "development",
-		"SITE_ORIGIN": "https://womanlab.cl"
+		"SITE_ORIGIN": "https://womanlab.cl",
+		"HAULMER_API_URL": "https://frontend-api.payment.haulmer.dev/v1/payment",
+		"MERCADOPAGO_API_URL": "https://api.mercadopago.com"
 	},
 	"assets": {
 		"directory": ".",

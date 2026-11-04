@@ -63,7 +63,15 @@ function priceOrderItems(inputItems) {
   return { amount, items };
 }
 
-function requiredCredentials(env) {
+function normalizePaymentProvider(env) {
+  const provider = String(env?.PAYMENT_PROVIDER || 'haulmer').trim().toLowerCase();
+  return provider === 'mercadopago' || provider === 'mp' ? 'mercadopago' : 'haulmer';
+}
+
+function requiredCredentials(env, providerName = normalizePaymentProvider(env)) {
+  if (providerName === 'mercadopago') {
+    return Boolean(env.MERCADOPAGO_ACCESS_TOKEN && env.MERCADOPAGO_WEBHOOK_SECRET);
+  }
   return Boolean(env.HAULMER_MERCHANT_RUT && env.HAULMER_API_KEY && env.HAULMER_PAYMENT_SECRET);
 }
 
@@ -143,31 +151,67 @@ async function verifyProviderSignature(fields, key, received) {
   return difference === 0;
 }
 
-async function createPayment(request, env) {
-  const origin = request.headers.get('Origin');
-  if (origin && !isAllowedOrigin(origin)) return jsonResponse({ error: 'origin_not_allowed' }, 403, origin);
-  if (!requiredCredentials(env)) {
-    return jsonResponse({ error: 'payment_not_configured', message: 'El pago online aún no está habilitado.' }, 503, origin);
-  }
-  if (!request.headers.get('Content-Type')?.toLowerCase().includes('application/json')) {
-    return jsonResponse({ error: 'invalid_content_type' }, 415, origin);
+async function createMercadoPagoPayment(env, customer, priced, orderId, origin) {
+  const siteOrigin = env.SITE_ORIGIN || 'https://womanlab.cl';
+  const apiBaseUrl = (env.MERCADOPAGO_API_URL || 'https://api.mercadopago.com').replace(/\/$/, '');
+  const body = {
+    items: priced.items.map(item => ({
+      id: item.id,
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: Number(item.unitAmount),
+      currency_id: 'CLP'
+    })),
+    payer: {
+      name: customer.firstName,
+      surname: customer.lastName,
+      email: customer.email,
+      phone: {
+        number: String(customer.phone).replace(/\D/g, '').slice(-9)
+      }
+    },
+    back_urls: {
+      success: `${siteOrigin}/pago/resultado?order_id=${encodeURIComponent(orderId)}`,
+      failure: `${siteOrigin}/pago/resultado?order_id=${encodeURIComponent(orderId)}&cancelled=1`,
+      pending: `${siteOrigin}/pago/resultado?order_id=${encodeURIComponent(orderId)}&cancelled=1`
+    },
+    auto_return: 'approved',
+    external_reference: orderId,
+    notification_url: `${siteOrigin}/api/payments/callback?provider=mercadopago`,
+    metadata: {
+      order_id: orderId,
+      customer_email: customer.email,
+      customer_phone: customer.phone
+    }
+  };
+
+  const response = await fetch(`${apiBaseUrl}/checkout/preferences`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Mercado Pago payment create failed:', response.status, errorText);
+    throw new Error('No se pudo iniciar el pago con Mercado Pago.');
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  const data = await response.json();
+  const paymentUrl = data.init_point || data.sandbox_init_point || data.url;
+  if (!paymentUrl || typeof paymentUrl !== 'string') {
+    throw new Error('Mercado Pago no devolvió una URL de pago válida.');
   }
 
-  const customer = normalizeCustomer(body.customer);
-  const priced = priceOrderItems(body.items);
-  if (!customer || !priced) {
-    return jsonResponse({ error: 'invalid_order', message: 'Revisa los productos y los datos de contacto.' }, 400, origin);
-  }
+  return { paymentUrl, providerName: 'mercadopago', providerAccountId: 'mercadopago', paymentId: data.id || null };
+}
 
-  const orderId = crypto.randomUUID();
-  const createdAt = new Date().toISOString();
+async function createHaulmerPayment(env, customer, priced, orderId, origin) {
   let provider;
 
   try {
@@ -203,12 +247,6 @@ async function createPayment(request, env) {
   fields.x_signature = await signProviderFields(fields, provider.signingKey);
 
   try {
-    await env.DB.prepare(
-      `INSERT INTO payment_orders
-        (id, amount, currency, items_json, customer_email, provider_account_id, status, created_at, updated_at)
-       VALUES (?, ?, 'CLP', ?, ?, ?, 'pending', ?, ?)`
-    ).bind(orderId, priced.amount, JSON.stringify(priced.items), customer.email, provider.accountId, createdAt, createdAt).run();
-
     const response = await fetch(provider.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -218,9 +256,7 @@ async function createPayment(request, env) {
     const responseText = await response.text();
     if (!response.ok) {
       console.error('Haulmer payment create returned HTTP', response.status);
-      await env.DB.prepare("UPDATE payment_orders SET status = 'failed', updated_at = ? WHERE id = ?")
-        .bind(new Date().toISOString(), orderId).run();
-      return jsonResponse({ error: 'payment_start_failed', message: 'No se pudo iniciar el pago. Contacta a Woman Lab.' }, 502, origin);
+      throw new Error('No se pudo iniciar el pago con Haulmer.');
     }
 
     let paymentUrl = responseText.trim();
@@ -236,10 +272,73 @@ async function createPayment(request, env) {
     if (parsedUrl.protocol !== 'https:') throw new Error('Payment provider returned a non-HTTPS URL.');
 
     const transactionId = parsedUrl.pathname.split('/').filter(Boolean).at(-1) || null;
-    await env.DB.prepare('UPDATE payment_orders SET provider_transaction_id = ?, updated_at = ? WHERE id = ?')
-      .bind(transactionId, new Date().toISOString(), orderId).run();
+    return { paymentUrl: parsedUrl.toString(), providerName: 'haulmer', providerAccountId: provider.accountId, transactionId };
+  } catch (error) {
+    console.error('Haulmer payment initiation failed:', error.message);
+    return { error: true, message: 'No se pudo iniciar el pago. Contacta a Woman Lab.' };
+  }
+}
 
-    return jsonResponse({ paymentUrl: parsedUrl.toString(), orderId }, 200, origin);
+async function createPayment(request, env) {
+  const origin = request.headers.get('Origin');
+  const providerName = normalizePaymentProvider(env);
+
+  if (origin && !isAllowedOrigin(origin)) return jsonResponse({ error: 'origin_not_allowed' }, 403, origin);
+  if (!requiredCredentials(env, providerName)) {
+    return jsonResponse({ error: 'payment_not_configured', provider: providerName, message: 'El pago online aún no está habilitado.' }, 503, origin);
+  }
+  if (!request.headers.get('Content-Type')?.toLowerCase().includes('application/json')) {
+    return jsonResponse({ error: 'invalid_content_type' }, 415, origin);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  const customer = normalizeCustomer(body.customer);
+  const priced = priceOrderItems(body.items);
+  if (!customer || !priced) {
+    return jsonResponse({ error: 'invalid_order', message: 'Revisa los productos y los datos de contacto.' }, 400, origin);
+  }
+
+  const orderId = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+
+  try {
+    if (providerName === 'mercadopago') {
+      await env.DB.prepare(
+        `INSERT INTO payment_orders
+          (id, amount, currency, items_json, customer_email, provider_account_id, status, created_at, updated_at)
+         VALUES (?, ?, 'CLP', ?, ?, ?, 'pending', ?, ?)`
+      ).bind(orderId, priced.amount, JSON.stringify(priced.items), customer.email, 'mercadopago', createdAt, createdAt).run();
+
+      const { paymentUrl, paymentId } = await createMercadoPagoPayment(env, customer, priced, orderId, origin);
+      await env.DB.prepare('UPDATE payment_orders SET provider_transaction_id = ?, updated_at = ? WHERE id = ?')
+        .bind(paymentId || null, new Date().toISOString(), orderId).run();
+      return jsonResponse({ paymentUrl, orderId }, 200, origin);
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO payment_orders
+        (id, amount, currency, items_json, customer_email, provider_account_id, status, created_at, updated_at)
+       VALUES (?, ?, 'CLP', ?, ?, ?, 'pending', ?, ?)`
+    ).bind(orderId, priced.amount, JSON.stringify(priced.items), customer.email, 'haulmer', createdAt, createdAt).run();
+
+    const result = await createHaulmerPayment(env, customer, priced, orderId, origin);
+    if (result?.error) {
+      await env.DB.prepare("UPDATE payment_orders SET status = 'failed', updated_at = ? WHERE id = ?")
+        .bind(new Date().toISOString(), orderId).run();
+      return jsonResponse({ error: 'payment_start_failed', message: result.message }, 502, origin);
+    }
+
+    const txnId = result.transactionId || null;
+    await env.DB.prepare('UPDATE payment_orders SET provider_transaction_id = ?, updated_at = ? WHERE id = ?')
+      .bind(txnId, new Date().toISOString(), orderId).run();
+
+    return jsonResponse({ paymentUrl: result.paymentUrl, orderId }, 200, origin);
   } catch (error) {
     console.error('Payment initiation failed:', error.message);
     await env.DB.prepare("UPDATE payment_orders SET status = 'failed', updated_at = ? WHERE id = ?")
@@ -261,7 +360,63 @@ async function readCallbackFields(request, url) {
   return fields;
 }
 
+async function updateOrderFromMercadoPago(env, payment) {
+  const orderId = payment?.external_reference || payment?.metadata?.order_id;
+  if (!orderId) return false;
+
+  const order = await env.DB.prepare('SELECT amount, currency, status FROM payment_orders WHERE id = ?')
+    .bind(orderId).first();
+  if (!order) return false;
+
+  const amount = Math.round(Number(payment.transaction_amount || payment.amount || 0));
+  const mappedStatus = payment.status === 'approved' ? 'completed' : payment.status === 'cancelled' || payment.status === 'rejected' ? 'failed' : 'pending';
+
+  if (amount && amount !== order.amount) {
+    return false;
+  }
+
+  await env.DB.prepare(
+    `UPDATE payment_orders SET status = ?, updated_at = ?
+     WHERE id = ? AND status = 'pending' AND amount = ? AND currency = ?`
+  ).bind(mappedStatus, new Date().toISOString(), orderId, order.amount, order.currency).run();
+
+  return true;
+}
+
 async function paymentCallback(request, env, url) {
+  const providerName = String(url.searchParams.get('provider') || env.PAYMENT_PROVIDER || 'haulmer').toLowerCase();
+
+  if (providerName === 'mercadopago' || providerName === 'mp') {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    if (!(env.MERCADOPAGO_ACCESS_TOKEN && env.MERCADOPAGO_WEBHOOK_SECRET)) {
+      return new Response('Payment verification unavailable', { status: 503 });
+    }
+
+    const payload = await request.json().catch(() => null);
+    const paymentId = payload?.data?.id || url.searchParams.get('id');
+    if (!paymentId) return new Response('Invalid callback data', { status: 400 });
+
+    const response = await fetch(`${(env.MERCADOPAGO_API_URL || 'https://api.mercadopago.com').replace(/\/$/, '')}/v1/payments/${encodeURIComponent(paymentId)}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`
+      },
+      signal: AbortSignal.timeout(12_000)
+    });
+
+    if (!response.ok) {
+      console.error('Mercado Pago callback fetch failed:', response.status);
+      return new Response('Payment verification unavailable', { status: 503 });
+    }
+
+    const payment = await response.json();
+    const updated = await updateOrderFromMercadoPago(env, payment);
+    if (!updated) return new Response('Payment details mismatch', { status: 409 });
+
+    return new Response('Callback received', { status: 200 });
+  }
+
   if (request.method !== 'GET' && request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
   let fields;
