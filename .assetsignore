@@ -1,0 +1,11 @@
+.assetsignore
+.gitignore
+.git/**
+.dev.vars*
+.env*
+.wrangler/**
+node_modules/**
+migrations/**
+worker.js
+wrangler.jsonc
+*.zip

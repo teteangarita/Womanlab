@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseCheckoutModal = document.getElementById('btnCloseCheckoutModal');
   const modalPayAmount = document.getElementById('modalPayAmount');
   const checkoutItemsList = document.getElementById('checkoutItemsList');
+  const paymentForm = document.getElementById('paymentForm');
+  const paymentMessage = document.getElementById('paymentMessage');
+  const btnStartPayment = document.getElementById('btnStartPayment');
 
   const toast = document.getElementById('toast');
   const toastMsg = document.getElementById('toastMsg');
@@ -135,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.btn-add-plan').forEach(btn => {
     btn.addEventListener('click', () => {
+      cart = cart.filter(item => !item.id.startsWith('plan-membership-'));
       addToCart(btn.dataset.id, btn.dataset.name, Number(btn.dataset.price), 'assets/images/hero_gym.png');
       openCart();
     });
@@ -184,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       membershipPrice.innerHTML = `${formatCurrency(selectedPrice.amount)} <span>/ ${selectedPrice.term}</span>`;
+      membershipButton.dataset.id = `plan-membership-${currentBillingCycle}`;
       membershipButton.dataset.price = String(selectedPrice.amount);
       membershipButton.dataset.name = `Membresía Woman Lab (${selectedPrice.label})`;
     });
@@ -264,6 +269,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnCloseCheckoutModal.addEventListener('click', () => {
     checkoutModal.classList.remove('open');
+  });
+
+  paymentForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (cart.length === 0) {
+      paymentMessage.textContent = 'Tu carrito está vacío.';
+      return;
+    }
+
+    const formData = new FormData(paymentForm);
+    const payload = {
+      items: cart.map(item => ({ id: item.id, quantity: item.qty })),
+      customer: {
+        firstName: formData.get('firstName'),
+        lastName: formData.get('lastName'),
+        email: formData.get('email'),
+        phone: formData.get('phone')
+      }
+    };
+
+    btnStartPayment.disabled = true;
+    paymentMessage.textContent = 'Conectando con el proveedor de pago…';
+
+    try {
+      const response = await fetch('/api/payments/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.paymentUrl) {
+        throw new Error(result.message || 'No se pudo iniciar el pago. Inténtalo nuevamente.');
+      }
+
+      const paymentUrl = new URL(result.paymentUrl);
+      if (paymentUrl.protocol !== 'https:') {
+        throw new Error('El proveedor devolvió un enlace de pago no seguro.');
+      }
+
+      window.location.assign(paymentUrl.toString());
+    } catch (error) {
+      paymentMessage.textContent = error.message || 'No se pudo conectar con el proveedor. Contacta a Woman Lab.';
+      btnStartPayment.disabled = false;
+    }
   });
 
 });

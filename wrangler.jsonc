@@ -1,0 +1,27 @@
+{
+	"$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+	"name": "womanlab",
+	"main": "worker.js",
+	"compatibility_date": "2026-11-02",
+	"workers_dev": true,
+	"vars": {
+		"HAULMER_API_URL": "https://frontend-api.payment.haulmer.dev/v1/payment",
+		"PAYMENT_ENV": "development",
+		"SITE_ORIGIN": "https://womanlab.cl"
+	},
+	"assets": {
+		"directory": ".",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*",
+			"/pago/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "womanlab-payments",
+			"database_id": "35921893-4729-4b02-bb37-0ef2e1d92f1f"
+		}
+	]
+}
