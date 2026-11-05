@@ -586,7 +586,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pricing-grid:has(.membership-card) {
-  grid-template-columns: minmax(0, 680px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   justify-content: center;
 }
 
