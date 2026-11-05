@@ -253,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData(paymentForm);
     const payload = {
       items: cart.map(item => ({ id: item.id, quantity: item.qty })),
+      paymentProvider: formData.get('paymentProvider'),
       customer: {
         firstName: formData.get('firstName'),
         lastName: formData.get('lastName'),

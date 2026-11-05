@@ -5,6 +5,8 @@ namespace WomanLab\Controllers;
 
 use PDO;
 use Throwable;
+use WomanLab\Controllers\CustomerController;
+use WomanLab\Controllers\SiteContentController;
 use WomanLab\Support\ApiResponse;
 use WomanLab\Support\Auth;
 
@@ -21,6 +23,12 @@ final class AdminController
         $resource = (string) ($_GET['resource'] ?? 'orders');
         if ($resource === 'products') {
             self::products($db, $method);
+        }
+        if ($resource === 'customers') {
+            CustomerController::dispatch($db, $method);
+        }
+        if ($resource === 'content') {
+            SiteContentController::admin($db, $method);
         }
         if ($resource === 'orders' && $method === 'GET') {
             self::orders($db);

@@ -242,7 +242,7 @@ async function createHaulmerPayment(env, customer, priced, orderId, origin) {
     x_reference: orderId,
     x_shop_country: 'CL',
     x_shop_name: 'Woman Lab',
-    x_url_callback: `${siteOrigin}/api/payments/callback`,
+    x_url_callback: `${siteOrigin}/api/payments/callback?provider=haulmer`,
     x_url_cancel: `${siteOrigin}/pago/resultado?order_id=${encodeURIComponent(orderId)}&cancelled=1`,
     x_url_complete: `${siteOrigin}/pago/resultado?order_id=${encodeURIComponent(orderId)}`,
     secret: env.HAULMER_PAYMENT_SECRET,
@@ -286,12 +286,8 @@ async function createHaulmerPayment(env, customer, priced, orderId, origin) {
 
 async function createPayment(request, env) {
   const origin = request.headers.get('Origin');
-  const providerName = normalizePaymentProvider(env);
 
   if (origin && !isAllowedOrigin(origin)) return jsonResponse({ error: 'origin_not_allowed' }, 403, origin);
-  if (!requiredCredentials(env, providerName)) {
-    return jsonResponse({ error: 'payment_not_configured', provider: providerName, message: 'El pago online aún no está habilitado.' }, 503, origin);
-  }
   if (!request.headers.get('Content-Type')?.toLowerCase().includes('application/json')) {
     return jsonResponse({ error: 'invalid_content_type' }, 415, origin);
   }
@@ -301,6 +297,15 @@ async function createPayment(request, env) {
     body = await request.json();
   } catch {
     return jsonResponse({ error: 'invalid_json' }, 400, origin);
+  }
+
+  const requestedProvider = String(body.paymentProvider || normalizePaymentProvider(env)).trim().toLowerCase();
+  const providerName = requestedProvider === 'mp' ? 'mercadopago' : requestedProvider;
+  if (!['haulmer', 'mercadopago'].includes(providerName)) {
+    return jsonResponse({ error: 'invalid_payment_provider' }, 400, origin);
+  }
+  if (!requiredCredentials(env, providerName)) {
+    return jsonResponse({ error: 'payment_not_configured', provider: providerName, message: 'El pago online aún no está habilitado.' }, 503, origin);
   }
 
   const customer = normalizeCustomer(body.customer);
@@ -437,7 +442,7 @@ async function paymentCallback(request, env, url) {
     return new Response('Invalid callback data', { status: 400 });
   }
   if (result === 'pending') return new Response('Payment pending', { status: 200 });
-  if (!requiredCredentials(env)) return new Response('Payment verification unavailable', { status: 503 });
+  if (!requiredCredentials(env, 'haulmer')) return new Response('Payment verification unavailable', { status: 503 });
 
   let provider;
   try {

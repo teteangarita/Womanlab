@@ -8,6 +8,11 @@
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
   })(window,document,'script','dataLayer','GTM-TFC7PCQL');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      location.replace(`/cpanel/public_html/${location.search}${location.hash}`);
+    }
+  </script>
   <title>Woman Lab | Entrenamiento Femenino, Membresías & Servicios</title>
   <meta name="description" content="Centro de entrenamiento femenino y salud integral Woman Lab en Av. Michimalonco 1231, San Pedro de la Paz. Conoce nuestros planes, consulta nutricionista y kinesióloga, y encuentra bebidas para entrenar.">
   <link rel="stylesheet" href="index.css">
@@ -570,9 +575,20 @@
         <span id="modalPayAmount">$0</span>
       </div>
       <p style="color: var(--text-muted); margin-bottom: 1rem;">
-        Para pagar, te redirigiremos al checkout seguro de TUU/Webpay. Woman Lab no recibe ni almacena los datos de tu tarjeta.
+        Selecciona tu medio de pago. Woman Lab no recibe ni almacena los datos de tu tarjeta.
       </p>
       <form id="paymentForm">
+        <fieldset class="payment-method-group">
+          <legend class="form-label">Medio de pago</legend>
+          <label class="payment-method-option">
+            <input type="radio" name="paymentProvider" value="haulmer" checked required>
+            <span class="payment-method-copy">
+              <strong>Haulmer</strong>
+              <small>Checkout seguro TUU / Webpay</small>
+            </span>
+            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+          </label>
+        </fieldset>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="paymentFirstName">Nombre</label>
@@ -593,7 +609,7 @@
         </div>
         <p id="paymentMessage" role="status" aria-live="polite" style="color: var(--text-muted); min-height: 1.5rem;"></p>
         <button type="submit" class="btn btn-primary" id="btnStartPayment" style="width: 100%; justify-content: center;">
-          Continuar a pago seguro <i class="fa-solid fa-lock"></i>
+          Continuar con Haulmer <i class="fa-solid fa-arrow-right"></i>
         </button>
       </form>
       <a class="btn btn-whatsapp" href="https://wa.me/message/ETH2YQ3YBNFMC1" target="_blank" rel="noopener" style="width: 100%; justify-content: center; margin-top: 0.75rem;">

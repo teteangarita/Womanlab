@@ -68,22 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      const nutrition = catalogById.get('serv-nutricion');
-      const nutritionCard = [...document.querySelectorAll('.service-card')]
-        .find(card => card.querySelector('.service-img')?.alt === nutrition?.nombre);
-      if (nutrition && nutritionCard && !renderedIds.has(nutrition.id)) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'btn btn-cyan';
-        button.textContent = 'Agregar consulta al carrito';
-        button.style.width = '100%';
-        button.addEventListener('click', () => {
-          addToCart(nutrition.id, nutrition.nombre, nutrition.precio, nutrition.imagen_url);
-          openCart();
-        });
-        nutritionCard.querySelector('.service-content > div:last-child')?.append(button);
-      }
-
       const productsGrid = document.getElementById('productsGrid');
       result.products.forEach(product => {
         if (renderedIds.has(product.id) || product.id.startsWith('serv-') || product.id.startsWith('plan-membership-')) return;
@@ -134,6 +118,230 @@ document.addEventListener('DOMContentLoaded', () => {
       paymentMessage.textContent = error.message || 'No se pudo cargar el catálogo.';
       return catalogById;
     });
+
+  function makeElement(tag, className = '', text = '') {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function appendFeatures(list, features) {
+    list.replaceChildren();
+    (Array.isArray(features) ? features : []).forEach(feature => {
+      const item = makeElement('li', 'plan-feature-item');
+      const icon = makeElement('span', 'check-icon');
+      icon.append(makeElement('i', 'fa-solid fa-check'));
+      item.append(icon, document.createTextNode(` ${String(feature)}`));
+      list.append(item);
+    });
+  }
+
+  function renderMemberships(entries) {
+    const grid = document.querySelector('.pricing-grid');
+    const standardCard = grid?.querySelector('.membership-card');
+    if (!grid || !standardCard) return;
+    grid.querySelectorAll('.special-plan-card').forEach(card => card.remove());
+
+    const standard = entries.find(entry => entry.product_sku === 'plan-membership-monthly');
+    if (standard) {
+      const details = standard.details || {};
+      const title = standardCard.querySelector('.card-plan-title');
+      const description = standardCard.querySelector('.card-plan-desc');
+      const features = standardCard.querySelector('.plan-features');
+      const note = standardCard.querySelector('.membership-note');
+      if (title) title.textContent = details.display_title || standard.title;
+      if (description) description.textContent = standard.description;
+      if (features) appendFeatures(features, details.features);
+      if (note && details.note) note.textContent = details.note;
+    }
+
+    entries.filter(entry => !entry.product_sku).forEach(entry => {
+      const details = entry.details || {};
+      const card = makeElement('div', 'glass-panel glass-panel-hover pricing-card special-plan-card');
+      const content = makeElement('div');
+      content.append(makeElement('h3', 'card-plan-title', entry.title));
+      content.append(makeElement('p', 'card-plan-desc', entry.description));
+      const price = makeElement('div', 'card-price');
+      if (entry.price !== null) {
+        price.append(document.createTextNode(formatCurrency(entry.price)), makeElement('span', '', ` / ${details.term || ''}`));
+      }
+      content.append(price);
+      const features = makeElement('ul', 'plan-features');
+      appendFeatures(features, details.features);
+      content.append(features);
+      const link = makeElement('a', 'btn btn-cyan', details.button_text || 'Consultar');
+      link.href = entry.link_url || '#contacto';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.width = '100%';
+      card.append(content, link);
+      grid.append(card);
+    });
+  }
+
+  function renderStaff(entries) {
+    const grid = document.querySelector('.staff-grid');
+    if (!grid) return;
+    grid.replaceChildren();
+    entries.forEach(entry => {
+      const card = makeElement('article', 'glass-panel glass-panel-hover staff-card');
+      if (entry.image_url) {
+        const image = makeElement('img', 'staff-img');
+        image.src = entry.image_url;
+        image.alt = entry.title;
+        card.append(image);
+      }
+      const info = makeElement('div', 'staff-info');
+      info.append(makeElement('span', 'staff-role', entry.title));
+      info.append(makeElement('p', 'staff-desc', entry.description));
+      card.append(info);
+      grid.append(card);
+    });
+  }
+
+  function renderServiceCard(entry) {
+    const details = entry.details || {};
+    const card = makeElement('article', 'glass-panel glass-panel-hover service-card');
+    if (entry.image_url) {
+      const image = makeElement('img', 'service-img');
+      image.src = entry.image_url;
+      image.alt = entry.title;
+      card.append(image);
+    }
+    const content = makeElement('div', 'service-content');
+    const intro = makeElement('div');
+    intro.append(makeElement('h4', 'service-title', entry.title));
+    intro.append(makeElement('p', 'service-desc', entry.description));
+    const purchase = makeElement('div');
+    const meta = makeElement('div', 'service-meta');
+    if (details.duration) meta.append(makeElement('span', '', `Duración: ${details.duration}`));
+    meta.append(makeElement('span', 'service-price', entry.price === null ? '' : formatCurrency(entry.price)));
+    purchase.append(meta);
+
+    if (entry.product_sku && catalogById.has(entry.product_sku)) {
+      const button = makeElement('button', 'btn btn-cyan btn-add-service', details.button_text || 'Agregar al carrito');
+      button.type = 'button';
+      button.dataset.id = entry.product_sku;
+      button.addEventListener('click', () => {
+        const product = catalogById.get(entry.product_sku);
+        addToCart(product.id, product.nombre, product.precio, product.imagen_url || entry.image_url);
+        openCart();
+      });
+      purchase.append(button);
+    } else if (entry.link_url) {
+      const link = makeElement('a', 'btn btn-secondary', details.button_text || 'Consultar');
+      link.href = entry.link_url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      purchase.append(link);
+    }
+    content.append(intro, purchase);
+    card.append(content);
+    return card;
+  }
+
+  function renderServices(entries) {
+    const trainingGrid = document.querySelector('.personal-training-grid');
+    const nutritionGrid = document.querySelector('.nutrition-group .services-grid');
+    const kinesiologyGrid = document.querySelector('.kinesiology-grid');
+    const nutritionPackages = document.querySelector('.nutrition-package-list');
+    const training = entries.filter(entry => entry.details?.category === 'training');
+    const nutrition = entries.filter(entry => entry.details?.category === 'nutrition');
+    const kinesiology = entries.filter(entry => entry.details?.category === 'kinesiology');
+    const packages = entries.filter(entry => entry.details?.category === 'nutrition-package');
+    const friendsPromo = entries.find(entry => entry.details?.category === 'nutrition-friends');
+
+    if (trainingGrid) {
+      trainingGrid.replaceChildren();
+      training.forEach(entry => {
+        const card = makeElement('article', 'glass-panel glass-panel-hover training-rate');
+        card.append(makeElement('h4', '', entry.title));
+        card.append(makeElement('p', 'training-rate-classes', entry.details?.classes || ''));
+        const price = makeElement('p', 'training-rate-price');
+        price.append(document.createTextNode(formatCurrency(entry.price || 0)), makeElement('span', '', ` / ${entry.details?.term || ''}`));
+        card.append(price);
+        if (entry.link_url) {
+          const link = makeElement('a', 'btn btn-secondary', entry.details?.button_text || 'Consultar plan');
+          link.href = entry.link_url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          card.append(link);
+        }
+        trainingGrid.append(card);
+      });
+    }
+    if (nutritionGrid) {
+      nutritionGrid.replaceChildren();
+      nutrition.forEach(entry => nutritionGrid.append(renderServiceCard(entry)));
+    }
+    if (kinesiologyGrid) {
+      kinesiologyGrid.replaceChildren();
+      kinesiology.forEach(entry => kinesiologyGrid.append(renderServiceCard(entry)));
+    }
+    if (nutritionPackages) {
+      nutritionPackages.replaceChildren();
+      packages.forEach(entry => {
+        const item = makeElement('div', 'nutrition-package');
+        item.append(makeElement('span', '', entry.details?.term || entry.title));
+        item.append(makeElement('strong', '', formatCurrency(entry.price || 0)));
+        item.append(makeElement('small', '', entry.description));
+        nutritionPackages.append(item);
+      });
+    }
+    if (friendsPromo) {
+      const title = document.querySelector('.nutrition-friends-promo h4');
+      const description = document.querySelector('.nutrition-friends-promo p');
+      const link = document.querySelector('.nutrition-friends-promo a');
+      if (title) title.textContent = friendsPromo.title;
+      if (description) description.textContent = friendsPromo.description;
+      if (link) {
+        link.href = friendsPromo.link_url || '#contacto';
+        link.textContent = friendsPromo.details?.button_text || 'Consultar promoción';
+      }
+    }
+  }
+
+  function updateContact(entry) {
+    const selector = entry.slug === 'address'
+      ? 'a[href*="google.com/maps"]'
+      : entry.slug === 'whatsapp'
+        ? 'a[href^="https://wa.me"]'
+        : entry.slug === 'instagram'
+          ? 'a[href^="https://www.instagram.com"]'
+          : null;
+    if (!selector) return;
+    document.querySelectorAll(selector).forEach(link => {
+      link.href = entry.link_url;
+      const icon = link.querySelector('i');
+      link.replaceChildren();
+      if (icon) link.append(icon);
+      link.append(document.createTextNode(` ${entry.description || entry.title}`));
+    });
+    if (entry.slug === 'address') {
+      const heroAddress = document.querySelector('.hero-img-overlay > div > div:nth-child(2)');
+      if (heroAddress) heroAddress.textContent = entry.description;
+    }
+  }
+
+  function renderSiteContent(content) {
+    renderMemberships(content.membership || []);
+    renderStaff(content.staff || []);
+    renderServices(content.service || []);
+    (content.contact || []).forEach(updateContact);
+  }
+
+  const contentReady = Promise.all([
+    catalogReady,
+    fetch(`${storefrontBasePath}/api/content.php`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok || !result.content) throw new Error('No se pudo cargar el contenido del sitio.');
+        return result.content;
+      })
+  ]).then(([, content]) => renderSiteContent(content)).catch(error => {
+    console.error('Site content unavailable:', error.message);
+  });
 
   function showToast(msg) {
     toastMsg.textContent = msg;

@@ -87,10 +87,10 @@ final class AuthController
     {
         $email = strtolower(trim((string) ($payload['email'] ?? '')));
         $password = (string) ($payload['password'] ?? '');
-        $query = $db->prepare('SELECT id, nombre, email, password_hash, rol, email_verificado_en FROM usuarios WHERE email = ? LIMIT 1');
+        $query = $db->prepare('SELECT id, nombre, email, password_hash, rol, email_verificado_en, activo FROM usuarios WHERE email = ? LIMIT 1');
         $query->execute([$email]);
         $user = $query->fetch();
-        if (!$user || !password_verify($password, $user['password_hash']) || !$user['email_verificado_en']) {
+        if (!$user || !(int) $user['activo'] || !password_verify($password, $user['password_hash']) || !$user['email_verificado_en']) {
             ApiResponse::fail('invalid_credentials_or_unverified_email', 401);
         }
 
