@@ -1,0 +1,14 @@
+<?php
+declare(strict_types=1);
+
+namespace WomanLab\Services;
+
+use RuntimeException;
+
+final class CheckoutException extends RuntimeException
+{
+    public function __construct(string $message, public readonly int $httpStatus = 422)
+    {
+        parent::__construct($message);
+    }
+}
