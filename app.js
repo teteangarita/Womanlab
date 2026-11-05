@@ -2,8 +2,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   let cart = [];
   let currentBillingCycle = 'monthly';
-  let selectedSlotTime = '07:00 AM';
-  let selectedDiscipline = 'Musculación & Cardio';
 
   const cartToggleBtn = document.getElementById('cartToggleBtn');
   const cartDrawer = document.getElementById('cartDrawer');
@@ -192,37 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
       membershipButton.dataset.price = String(selectedPrice.amount);
       membershipButton.dataset.name = `Membresía Woman Lab (${selectedPrice.label})`;
     });
-  });
-
-  const disciplineFilter = document.getElementById('disciplineFilter');
-  const selectedDisciplineText = document.getElementById('selectedDisciplineText');
-  const timeSlotsGrid = document.getElementById('timeSlotsGrid');
-  const btnConfirmBooking = document.getElementById('btnConfirmBooking');
-  const bookingDate = document.getElementById('bookingDate');
-
-  disciplineFilter.querySelectorAll('.chip-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      disciplineFilter.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedDiscipline = btn.dataset.discipline;
-      selectedDisciplineText.textContent = selectedDiscipline;
-    });
-  });
-
-  timeSlotsGrid.querySelectorAll('.slot-card').forEach(slot => {
-    slot.addEventListener('click', () => {
-      timeSlotsGrid.querySelectorAll('.slot-card').forEach(s => s.classList.remove('selected'));
-      slot.classList.add('selected');
-      selectedSlotTime = slot.dataset.time;
-    });
-  });
-
-  btnConfirmBooking.addEventListener('click', () => {
-    const dateVal = bookingDate.value;
-    const bookingItemName = `Reserva: ${selectedDiscipline} (${dateVal} @ ${selectedSlotTime})`;
-    
-    addToCart(`booking-${Date.now()}`, bookingItemName, 0, 'assets/images/hero_gym.png');
-    openCart();
   });
 
   const filterBtns = document.querySelectorAll('.filter-btn');
