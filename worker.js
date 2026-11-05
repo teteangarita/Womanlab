@@ -4,7 +4,12 @@ const CATALOG = {
   'plan-membership-semiannual': { name: 'Membresía Woman Lab (Semestral)', price: 192000, kind: 'membership' },
   'plan-membership-annual': { name: 'Membresía Woman Lab (Anual)', price: 336000, kind: 'membership' },
   'serv-nutricion': { name: 'Asesoría Nutricionista Deportivo', price: 30000, kind: 'service' },
-  'serv-kinesiologia': { name: 'Sesión Kinesiología & Fisioterapia', price: 38000, kind: 'service' }
+  'serv-kinesiologia': { name: 'Sesión Kinesiología & Fisioterapia', price: 38000, kind: 'service' },
+  'product-water-sparkling': { name: 'Agua Cachantun gasificada', price: 1500, kind: 'product' },
+  'product-gatorade': { name: 'Gatorade', price: 2500, kind: 'product' },
+  'product-gatorade-zero': { name: 'Gatorade Zero', price: 3000, kind: 'product' },
+  'product-gatorlit-recover': { name: 'Gatorlit Recover', price: 3000, kind: 'product' },
+  'product-redbull-250ml': { name: 'Redbull 250 ml', price: 2500, kind: 'product' }
 };
 
 const MAX_ORDER_AMOUNT = 1_000_000;

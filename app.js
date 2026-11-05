@@ -125,6 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (btnPlus) {
       const id = btnPlus.dataset.id;
       const item = cart.find(i => i.id === id);
+      if (item?.qty >= 10) {
+        showToast('Puedes agregar hasta 10 unidades por producto');
+        return;
+      }
       if (item) item.qty += 1;
       updateCartUI();
     } else if (btnRemove) {
@@ -162,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const img = btn.dataset.img;
 
       addToCart(id, name, price, img);
+      openCart();
     });
   });
 
