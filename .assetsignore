@@ -4,6 +4,7 @@
 .dev.vars*
 .env*
 .wrangler/**
+.venv/**
 node_modules/**
 migrations/**
 worker.js
