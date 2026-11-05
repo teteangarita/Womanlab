@@ -62,8 +62,9 @@ final class WebhookController
                 ApiResponse::fail('amount_mismatch', 409);
             }
 
-            if ($order['estado'] === 'PENDIENTE') {
-                if (strtotime($order['expira_en']) < time()) {
+            if ($order['estado'] === 'PENDIENTE'
+                || ($status === 'PAID' && $order['estado'] === 'ANULADA')) {
+                if ($status !== 'PAID' && strtotime($order['expira_en']) < time()) {
                     $db->prepare("UPDATE ordenes SET estado = 'ANULADA' WHERE id = ?")->execute([$order['id']]);
                     $db->commit();
                     ApiResponse::fail('order_expired', 409);
@@ -92,12 +93,14 @@ final class WebhookController
                     }
                     $db->prepare(
                         "UPDATE ordenes SET estado = 'PAGADA', tuu_transaction_id = ?, dte_estado = 'EMITIENDO'
-                         WHERE id = ? AND estado = 'PENDIENTE'"
+                         WHERE id = ? AND estado IN ('PENDIENTE', 'ANULADA')"
                     )->execute([$transactionId, $order['id']]);
                     $issueDocument = true;
-                } else {
+                } elseif ($order['estado'] === 'PENDIENTE') {
                     $db->prepare("UPDATE ordenes SET estado = 'RECHAZADA' WHERE id = ? AND estado = 'PENDIENTE'")
                         ->execute([$order['id']]);
+                } else {
+                    $duplicate = true;
                 }
             } elseif ($status === 'PAID' && $order['estado'] === 'PAGADA'
                 && in_array($order['dte_estado'], ['PENDIENTE', 'ERROR'], true)) {

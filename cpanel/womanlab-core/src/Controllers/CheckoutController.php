@@ -18,8 +18,15 @@ final class CheckoutController
         try {
             $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
             if ($origin !== '') {
-                $expectedOrigin = parse_url($_ENV['APP_URL'] ?? '', PHP_URL_SCHEME) . '://' . parse_url($_ENV['APP_URL'] ?? '', PHP_URL_HOST);
-                if (!hash_equals(strtolower($expectedOrigin), strtolower(rtrim($origin, '/')))) {
+                $expected = parse_url($_ENV['APP_URL'] ?? '');
+                $received = parse_url($origin);
+                $expectedScheme = strtolower((string) ($expected['scheme'] ?? ''));
+                $receivedScheme = strtolower((string) ($received['scheme'] ?? ''));
+                $expectedPort = $expected['port'] ?? ($expectedScheme === 'https' ? 443 : 80);
+                $receivedPort = $received['port'] ?? ($receivedScheme === 'https' ? 443 : 80);
+                if ($expectedScheme === '' || $receivedScheme !== $expectedScheme
+                    || strtolower((string) ($received['host'] ?? '')) !== strtolower((string) ($expected['host'] ?? ''))
+                    || $receivedPort !== $expectedPort) {
                     ApiResponse::fail('origin_not_allowed', 403);
                 }
             }

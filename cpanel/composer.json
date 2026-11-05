@@ -1,6 +1,7 @@
 {
   "name": "womanlab/cpanel-storefront",
   "description": "Aplicación de comercio electrónico Woman Lab para cPanel con PHP y TUU.",
+  "license": "proprietary",
   "type": "project",
   "require": {
     "php": ">=8.2",

@@ -72,7 +72,7 @@ Revisa `git status` y el contenido de cada staging antes de confirmar. No subas 
 
 En cPanel crea primero la base y el usuario desde **MySQL Databases**. Si cPanel prefija sus nombres, selecciona la base al importar y omite/ajusta `CREATE DATABASE` y `USE womanlab` al comienzo de los SQL. Importa primero `schema.sql` y luego `seeds.sql`.
 
-El usuario `admin@example.test` del seed tiene la contraseña de prueba `password`. Es únicamente para una base local aislada. Antes de cargar datos en un servidor, elimina esa fila o reemplaza inmediatamente la contraseña por una cuenta con hash generado con `password_hash()` y cambia su correo; nunca expongas esta cuenta en producción.
+El usuario `admin@example.test` del seed tiene la contraseña temporal `AuditOnly-2026-Test!`. Es únicamente para una base local aislada. Antes de cargar datos en un servidor, elimina esa fila o reemplaza inmediatamente la contraseña por una cuenta con hash generado con `password_hash()` y cambia su correo; nunca expongas esta cuenta en producción.
 
 ## Checkout y TUU
 

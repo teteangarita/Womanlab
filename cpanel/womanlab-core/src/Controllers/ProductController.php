@@ -14,7 +14,7 @@ final class ProductController
             ApiResponse::fail('method_not_allowed', 405);
         }
         $products = $db->query(
-            'SELECT sku AS id, sku, nombre, descripcion, precio, stock, imagen_url
+            'SELECT sku AS id, sku, nombre, descripcion, precio, imagen_url
              FROM productos WHERE activo = 1 ORDER BY id'
         )->fetchAll();
         ApiResponse::json(['products' => $products]);

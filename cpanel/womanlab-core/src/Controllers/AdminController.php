@@ -52,7 +52,7 @@ final class AdminController
         $stock = filter_var($payload['stock'] ?? null, FILTER_VALIDATE_INT);
         $image = trim((string) ($payload['imagen_url'] ?? ''));
         if ($sku === '' || strlen($sku) > 80 || $name === '' || mb_strlen($name) > 160
-            || $price === false || $price < 0 || $stock === false || $stock < 0
+            || $price === false || $price < 1 || $stock === false || $stock < 0
             || ($image !== '' && (str_contains($image, '..') || !preg_match('#^/?(?:assets|uploads)/[a-zA-Z0-9_./-]+$#', $image)))) {
             ApiResponse::fail('invalid_product', 422);
         }
@@ -64,6 +64,16 @@ final class AdminController
             $id = filter_var($payload['id'] ?? null, FILTER_VALIDATE_INT);
             if (!$id) {
                 ApiResponse::fail('invalid_product_id', 422);
+            }
+            $reservation = $db->prepare(
+                "SELECT COALESCE(SUM(oi.cantidad), 0)
+                 FROM orden_items oi JOIN ordenes o ON o.id = oi.orden_id
+                 WHERE oi.producto_id = (SELECT id FROM productos WHERE id = ?)
+                   AND o.estado = 'PENDIENTE' AND o.expira_en > NOW()"
+            );
+            $reservation->execute([$id]);
+            if ($stock < (int) $reservation->fetchColumn()) {
+                ApiResponse::fail('stock_below_active_reservations', 409);
             }
             $query = $db->prepare('UPDATE productos SET sku = ?, nombre = ?, descripcion = ?, precio = ?, stock = ?, imagen_url = ? WHERE id = ?');
             $query->execute([$sku, $name, $description, $price, $stock, $image ?: null, $id]);

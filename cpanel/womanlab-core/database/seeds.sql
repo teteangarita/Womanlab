@@ -14,8 +14,12 @@ INSERT INTO productos (sku, nombre, descripcion, precio, stock, imagen_url, acti
 ('product-redbull-250ml', 'Redbull 250 ml', 'Lata de 250 ml.', 2500, 100, 'assets/images/hero_gym.png', 1)
 ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), descripcion = VALUES(descripcion), precio = VALUES(precio);
 
--- Cuenta exclusivamente local/de prueba: admin@example.test / password
+-- Cuenta exclusivamente local/de prueba: admin@example.test / AuditOnly-2026-Test!
 -- Reemplazar por un hash nuevo antes de desplegar y borrar esta cuenta de prueba.
 INSERT INTO usuarios (nombre, email, password_hash, rol, email_verificado_en) VALUES
-('Admin de pruebas', 'admin@example.test', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.', 'admin', CURRENT_TIMESTAMP)
-ON DUPLICATE KEY UPDATE rol = VALUES(rol);
+('Admin de pruebas', 'admin@example.test', '$2y$12$.lDn1j7FHeW7DH2ith2E6eYqK/p4tPwaVRdLcrYmSXhC1pYqEYhea', 'admin', CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE
+	nombre = VALUES(nombre),
+	password_hash = VALUES(password_hash),
+	rol = VALUES(rol),
+	email_verificado_en = COALESCE(email_verificado_en, VALUES(email_verificado_en));
