@@ -1,4 +1,6 @@
 
+const storefrontBasePath = new URL('..', document.currentScript.src).pathname.replace(/\/$/, '');
+
 document.addEventListener('DOMContentLoaded', () => {
   let cart = [];
   let currentBillingCycle = 'monthly';
@@ -42,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addButtons = document.querySelectorAll('.btn-add-plan, .btn-add-service, .btn-add-cart');
   addButtons.forEach(button => { button.disabled = true; });
 
-  const catalogReady = fetch('/api/products.php', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+  const catalogReady = fetch(`${storefrontBasePath}/api/products.php`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
     .then(async response => {
       const result = await response.json();
       if (!response.ok || !Array.isArray(result.products)) throw new Error('No se pudo cargar el catálogo.');
@@ -394,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentMessage.textContent = 'Conectando con TUU…';
 
     try {
-      const response = await fetch('/api/checkout.php', {
+      const response = await fetch(`${storefrontBasePath}/api/checkout.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

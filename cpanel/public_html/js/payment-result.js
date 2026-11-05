@@ -1,3 +1,5 @@
+const paymentBasePath = new URL('..', document.currentScript.src).pathname.replace(/\/$/, '');
+
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const orderCode = params.get('codigo_orden');
@@ -15,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const check = async () => {
     attempts += 1;
     try {
-      const response = await fetch('/api/order_status.php?codigo_orden=' + encodeURIComponent(orderCode), { cache: 'no-store' });
+      const response = await fetch(`${paymentBasePath}/api/order_status.php?codigo_orden=${encodeURIComponent(orderCode)}`, { cache: 'no-store' });
       const order = await response.json();
       if (!response.ok) throw new Error('No pudimos consultar el pedido.');
       if (order.estado === 'PAGADA') {

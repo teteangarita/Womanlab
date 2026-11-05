@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const productsTable = document.getElementById('productsTable');
   const ordersTable = document.getElementById('ordersTable');
   const productForm = document.getElementById('productForm');
+  const basePath = document.querySelector('meta[name="app-base-path"]')?.content || '';
   let csrfToken = '';
 
   const element = (tag, text, className = '') => {
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function getCsrfToken() {
     if (csrfToken) return csrfToken;
-    const response = await fetch('/api/auth.php?action=me', {
+    const response = await fetch(`${basePath}/api/auth.php?action=me`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: '{}',
@@ -66,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
       deactivate.addEventListener('click', async () => {
         if (!window.confirm(`¿Desactivar ${product.nombre}?`)) return;
         try {
-          await api('/api/admin.php?resource=products', {
+          await api(`${basePath}/api/admin.php?resource=products`, {
             method: 'DELETE', body: JSON.stringify({ id: Number(product.id) })
           });
           await loadProducts();
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadProducts() {
-    const data = await api('/api/admin.php?resource=products');
+    const data = await api(`${basePath}/api/admin.php?resource=products`);
     renderProducts(data.products);
   }
 
@@ -107,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const value = filters.get(name);
       if (value) params.set(name, value);
     });
-    const data = await api('/api/admin.php?resource=orders&' + params.toString());
+    const data = await api(`${basePath}/api/admin.php?resource=orders&${params.toString()}`);
     renderOrders(data.orders);
   }
 
@@ -120,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (image instanceof File && image.size > 0) {
         const upload = new FormData();
         upload.append('imagen', image);
-        const uploaded = await api('/api/admin.php?resource=upload', { method: 'POST', body: upload });
+        const uploaded = await api(`${basePath}/api/admin.php?resource=upload`, { method: 'POST', body: upload });
         data.set('imagen_url', uploaded.imagen_url);
       }
       const payload = Object.fromEntries(['id', 'sku', 'nombre', 'precio', 'stock', 'descripcion', 'imagen_url']
@@ -128,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const method = payload.id ? 'PUT' : 'POST';
       payload.precio = Number(payload.precio);
       payload.stock = Number(payload.stock);
-      await api('/api/admin.php?resource=products', { method, body: JSON.stringify(payload) });
+      await api(`${basePath}/api/admin.php?resource=products`, { method, body: JSON.stringify(payload) });
       productForm.reset();
       message.textContent = 'Catálogo actualizado.';
       await loadProducts();
@@ -143,8 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('logoutButton').addEventListener('click', async () => {
     try {
-      await api('/api/auth.php?action=logout', { method: 'POST', body: '{}' });
-      window.location.assign('/admin/login.php');
+      await api(`${basePath}/api/auth.php?action=logout`, { method: 'POST', body: '{}' });
+      window.location.assign(`${basePath}/admin/login.php`);
     } catch (error) { message.textContent = error.message; }
   });
 

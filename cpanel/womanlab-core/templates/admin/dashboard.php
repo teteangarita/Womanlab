@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="app-base-path" content="<?= htmlspecialchars($basePath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
   <title>Panel de administración | Woman Lab</title>
-  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="<?= htmlspecialchars($basePath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>/css/admin.css">
 </head>
 <body class="admin-page">
   <header class="admin-header">
-    <a class="admin-brand" href="/">WOMAN <span>LAB</span></a>
+    <a class="admin-brand" href="<?= htmlspecialchars($basePath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>/">WOMAN <span>LAB</span></a>
     <div class="admin-header-actions">
       <span><?= htmlspecialchars((string) $user['nombre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></span>
       <button class="button-secondary" id="logoutButton" type="button">Cerrar sesión</button>
@@ -17,7 +18,7 @@
   <main class="admin-main">
     <div class="admin-title-row">
       <div><p class="admin-eyebrow">GESTIÓN DEL COMERCIO</p><h1>Panel de control</h1></div>
-      <a class="button-secondary" href="/" target="_blank" rel="noopener">Ver sitio</a>
+      <a class="button-secondary" href="<?= htmlspecialchars($basePath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>/" target="_blank" rel="noopener">Ver sitio</a>
     </div>
     <p id="adminMessage" class="admin-message" role="status" aria-live="polite"></p>
 
@@ -48,6 +49,6 @@
       <div class="table-scroll"><table><thead><tr><th>Fecha / orden</th><th>Cliente</th><th>Ítems</th><th>Total</th><th>Estado</th><th>Transacción TUU</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
     </section>
   </main>
-  <script src="/js/admin.js" defer></script>
+  <script src="<?= htmlspecialchars($basePath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>/js/admin.js" defer></script>
 </body>
 </html>

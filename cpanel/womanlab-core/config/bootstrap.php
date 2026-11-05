@@ -9,6 +9,15 @@ require_once $projectRoot . '/vendor/autoload.php';
 
 Dotenv::createImmutable(__DIR__ . '/..')->safeLoad();
 
+if (!function_exists('womanlab_base_path')) {
+    function womanlab_base_path(): string
+    {
+        $script = parse_url($_SERVER['SCRIPT_NAME'] ?? '/', PHP_URL_PATH) ?: '/';
+        $basePath = dirname(dirname($script));
+        return $basePath === '/' || $basePath === '.' ? '' : rtrim($basePath, '/');
+    }
+}
+
 foreach ([
     'APP_URL', 'APP_TIMEZONE', 'TUU_API_KEY', 'TUU_CHECKOUT_URL', 'TUU_PAYMENT_HOSTS',
     'TUU_RETURN_URL', 'TUU_WEBHOOK_URL', 'TUU_WEBHOOK_SECRET', 'TUU_SIGNATURE_HEADER',

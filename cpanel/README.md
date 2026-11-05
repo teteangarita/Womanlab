@@ -118,6 +118,17 @@ Rutas de autenticación: `POST /api/auth.php?action=register`, `login`, `me` y `
 
 Las sesiones usan cookie `Secure`, `HttpOnly`, `SameSite=Strict`, regeneración de ID al iniciar sesión y CSRF en cambios administrativos. La administración está en `/admin/`; solo rol `admin`. La API permite listar/crear/editar/desactivar productos, subir imágenes JPEG/PNG/WebP hasta 5 MB e historial de pedidos filtrado por fecha/estado. Restringe además el acceso a `/admin` por VPN/IP si el hosting lo permite.
 
+## Ejecución local
+
+Completa `womanlab-core/.env` con `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `APP_URL` para MariaDB local. Desde la raíz del repositorio, el modo recomendado usa el mismo docroot que cPanel:
+
+```bash
+cd cpanel/public_html
+php -S localhost:3390
+```
+
+En ese modo abre `http://localhost:3390/admin/login.php`. También se admite iniciar PHP desde la raíz del repositorio con `php -S localhost:3390`; entonces la ruta es `http://localhost:3390/cpanel/public_html/admin/login.php`. El panel detecta ese prefijo local. El formulario envía credenciales por `POST`, nunca en parámetros de URL.
+
 ## Configuración en cPanelHost
 
 1. En Git, confirma que estás en `feature/migration-php-tuu`; no despliegues desde `main` durante validación.
