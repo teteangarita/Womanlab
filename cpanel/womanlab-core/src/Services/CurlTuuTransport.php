@@ -16,6 +16,13 @@ final class CurlTuuTransport implements TuuTransport
         if ($handle === false) {
             throw new RuntimeException('No se pudo iniciar cURL.');
         }
+        $headers = ['Accept: application/json', 'Content-Type: application/json'];
+        if (isset($payload['x_account_id'])) {
+            $headers[] = 'X-REDIRECT: false';
+        } else {
+            $headers[] = 'ApiKey: ' . $apiKey;
+            $headers[] = 'Idempotency-Key: ' . ($payload['reference'] ?? '');
+        }
         curl_setopt_array($handle, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
@@ -23,12 +30,7 @@ final class CurlTuuTransport implements TuuTransport
             CURLOPT_TIMEOUT => 15,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_HTTPHEADER => [
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'ApiKey: ' . $apiKey,
-                'Idempotency-Key: ' . ($payload['buy_order'] ?? $payload['reference'] ?? ''),
-            ],
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
         ]);
         $body = curl_exec($handle);
@@ -39,10 +41,16 @@ final class CurlTuuTransport implements TuuTransport
             error_log('TUU request failed: HTTP ' . $status . ' ' . $error);
             throw new RuntimeException('No se pudo completar la solicitud TUU.');
         }
+        if (isset($payload['x_account_id']) && filter_var(trim($body), FILTER_VALIDATE_URL)) {
+            return ['url' => trim($body)];
+        }
         try {
             $decoded = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw new RuntimeException('TUU devolvió una respuesta inválida.');
+        }
+        if (is_string($decoded) && isset($payload['x_account_id'])) {
+            return ['url' => $decoded];
         }
         if (!is_array($decoded)) {
             throw new RuntimeException('TUU devolvió una respuesta inválida.');

@@ -16,6 +16,9 @@ final class CheckoutController
     public static function create(PDO $db): never
     {
         try {
+            if (($_ENV['TUU_CHECKOUT_ENABLED'] ?? '') !== '1') {
+                ApiResponse::json(['error' => 'payment_not_available', 'message' => 'El pago en línea aún no está habilitado.'], 503);
+            }
             $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
             if ($origin !== '') {
                 $expected = parse_url($_ENV['APP_URL'] ?? '');

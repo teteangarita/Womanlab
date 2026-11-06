@@ -635,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (!response.ok || !result.redirect_url) {
-        throw new Error(result.error || 'No se pudo iniciar el pago. Inténtalo nuevamente.');
+        throw new Error(result.message || result.error || 'No se pudo iniciar el pago. Inténtalo nuevamente.');
       }
 
       const paymentUrl = new URL(result.redirect_url);

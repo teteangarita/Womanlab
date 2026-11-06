@@ -14,34 +14,50 @@ final class TuuClient
     public function createCheckout(array $order, array $items, array $customer): array
     {
         $apiKey = $_ENV['TUU_API_KEY'] ?? '';
-        $checkoutUrl = $_ENV['TUU_CHECKOUT_URL'] ?? 'https://api.haulmer.com/v2/payment/checkout';
+        $checkoutUrl = $_ENV['TUU_API_URL'] ?? '';
+        $accountId = $_ENV['TUU_ACCOUNT_ID'] ?? '';
         $returnUrl = $_ENV['TUU_RETURN_URL'] ?? '';
         $webhookUrl = $_ENV['TUU_WEBHOOK_URL'] ?? '';
 
-        if ($apiKey === '' || $returnUrl === '' || $webhookUrl === '') {
+        if ($apiKey === '' || $accountId === '' || $checkoutUrl === '' || $returnUrl === '' || $webhookUrl === '') {
             throw new RuntimeException('La configuración de TUU está incompleta.');
         }
 
+        foreach ([$returnUrl, $webhookUrl] as $url) {
+            if (!filter_var($url, FILTER_VALIDATE_URL) || parse_url($url, PHP_URL_SCHEME) !== 'https') {
+                throw new RuntimeException('Las URL de retorno y callback de TUU deben usar HTTPS.');
+            }
+        }
+
+        $nameParts = preg_split('/\s+/u', trim((string) ($customer['name'] ?? '')), 2) ?: [];
+        $reference = (string) $order['codigo_orden'];
+        $separator = str_contains($returnUrl, '?') ? '&' : '?';
+        $resultUrl = $returnUrl . $separator . 'codigo_orden=' . rawurlencode($reference);
         $payload = [
-            'buy_order' => $order['codigo_orden'],
-            'amount' => (int) $order['monto_total'],
-            'currency' => 'CLP',
-            'return_url' => $returnUrl . '?codigo_orden=' . rawurlencode($order['codigo_orden']),
-            'webhook_url' => $webhookUrl,
-            'customer' => $customer,
-            'items' => array_map(static fn (array $item): array => [
-                'sku' => $item['sku'],
-                'name' => $item['nombre'],
-                'quantity' => (int) $item['cantidad'],
-                'unit_price' => (int) $item['precio_unitario'],
-            ], $items),
+            'x_account_id' => $accountId,
+            'x_amount' => (int) $order['monto_total'],
+            'x_currency' => 'CLP',
+            'x_customer_email' => (string) ($customer['email'] ?? ''),
+            'x_customer_first_name' => $nameParts[0] ?? '',
+            'x_customer_last_name' => $nameParts[1] ?? $nameParts[0] ?? '',
+            'x_customer_phone' => (string) ($customer['phone'] ?? ''),
+            'x_description' => mb_substr(implode(', ', array_map(
+                static fn (array $item): string => $item['cantidad'] . ' x ' . $item['nombre'],
+                $items
+            )), 0, 250),
+            'x_reference' => $reference,
+            'x_shop_name' => 'Woman Lab',
+            'x_url_callback' => $webhookUrl,
+            'x_url_cancel' => $resultUrl,
+            'x_url_complete' => $resultUrl,
         ];
+        $payload['x_signature'] = self::signFields($payload, $apiKey);
 
         $response = $this->request($checkoutUrl, $apiKey, $payload);
         $paymentUrl = $response['url'] ?? $response['payment_url'] ?? $response['checkout_url'] ?? null;
         $token = $response['token'] ?? $response['session_token'] ?? null;
-        if (!is_string($paymentUrl) || !is_string($token) || $token === '') {
-            throw new RuntimeException('La respuesta de TUU no contiene URL o token de sesión.');
+        if (!is_string($paymentUrl) || $paymentUrl === '') {
+            throw new RuntimeException('La respuesta de TUU no contiene una URL de pago.');
         }
 
         $parsed = parse_url($paymentUrl);
@@ -53,6 +69,20 @@ final class TuuClient
         }
 
         return ['url' => $paymentUrl, 'token' => $token, 'transaction_id' => $response['transaction_id'] ?? null];
+    }
+
+    public static function signFields(array $fields, string $secret): string
+    {
+        $signedFields = array_filter($fields, static fn (string $key): bool => str_starts_with($key, 'x_') && $key !== 'x_signature', ARRAY_FILTER_USE_KEY);
+        ksort($signedFields, SORT_STRING);
+        $canonical = '';
+        foreach ($signedFields as $key => $value) {
+            if (!is_scalar($value) && $value !== null) {
+                throw new RuntimeException('Campo de firma TUU inválido.');
+            }
+            $canonical .= $key . (string) $value;
+        }
+        return hash_hmac('sha256', $canonical, $secret);
     }
 
     public function issueDocument(array $order, array $items): array

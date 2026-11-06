@@ -6,6 +6,7 @@ Contraseña temporal: AuditOnly-2026-Test!
 
 
 
+php -S localhost:3390
 
 ## Guía de Despliegue en Render.com
 
