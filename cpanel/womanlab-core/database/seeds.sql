@@ -24,7 +24,7 @@ ON DUPLICATE KEY UPDATE
 	rol = VALUES(rol),
 	email_verificado_en = COALESCE(email_verificado_en, VALUES(email_verificado_en));
 
-INSERT INTO site_content
+INSERT IGNORE INTO site_content
 	(section, slug, title, description, price, product_sku, image_url, link_url, details_json, sort_order, activo)
 VALUES
 ('membership', 'monthly', 'Membresía Woman Lab (Mensual)', 'Acceso a la zona de musculación y cardio, app de rutinas, lockers y duchas.', 40000, 'plan-membership-monthly', NULL, NULL, '{"cycle":"monthly","term":"mes","display_title":"Membresía Única","features":["Pase libre zona musculación & cardio","App de seguimiento de rutinas"],"note":"Nutrición y kinesiología se reservan por separado."}', 10, 1),
@@ -49,7 +49,3 @@ VALUES
 ('contact', 'address', 'Dirección', 'Av. Michimalonco 1231, San Pedro de la Paz', NULL, NULL, NULL, 'https://www.google.com/maps/search/?api=1&query=Av.+Michimalonco+1231,+San+Pedro+de+la+Paz', '{}', 10, 1),
 ('contact', 'whatsapp', 'WhatsApp', 'WhatsApp Directo', NULL, NULL, NULL, 'https://wa.me/message/ETH2YQ3YBNFMC1', '{}', 20, 1),
 ('contact', 'instagram', 'Instagram', '@womanlab.cl', NULL, NULL, NULL, 'https://www.instagram.com/womanlab.cl/', '{}', 30, 1)
-ON DUPLICATE KEY UPDATE
-	title = VALUES(title), description = VALUES(description), price = VALUES(price),
-	product_sku = VALUES(product_sku), image_url = VALUES(image_url), link_url = VALUES(link_url),
-	details_json = VALUES(details_json), sort_order = VALUES(sort_order), activo = VALUES(activo);

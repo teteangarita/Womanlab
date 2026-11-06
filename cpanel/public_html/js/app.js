@@ -144,6 +144,16 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.querySelectorAll('.special-plan-card').forEach(card => card.remove());
 
     const standard = entries.find(entry => entry.product_sku === 'plan-membership-monthly');
+    entries.forEach(entry => {
+      const cycle = entry.details?.cycle;
+      const cycleConfig = cycle && membershipPrices[cycle];
+      if (!cycleConfig) return;
+      cycleConfig.term = entry.details.term || cycleConfig.term;
+      const cycleLabel = entry.title.match(/\(([^)]+)\)/)?.[1];
+      if (cycleLabel) cycleConfig.label = cycleLabel;
+      const button = document.querySelector(`.cycle-btn[data-cycle="${cycle}"]`);
+      if (button && cycleLabel) button.textContent = cycleLabel;
+    });
     if (standard) {
       const details = standard.details || {};
       const title = standardCard.querySelector('.card-plan-title');
@@ -310,7 +320,20 @@ document.addEventListener('DOMContentLoaded', () => {
         : entry.slug === 'instagram'
           ? 'a[href^="https://www.instagram.com"]'
           : null;
-    if (!selector) return;
+    if (!selector) {
+      const container = document.getElementById('footerContact') || document.querySelector('.footer-grid > div:nth-child(2)');
+      if (!container) return;
+      const paragraph = makeElement('p');
+      const link = makeElement('a', 'footer-link', `${entry.title}: ${entry.description}`);
+      link.href = entry.link_url || '#contacto';
+      if (entry.link_url) {
+        link.target = '_blank';
+        link.rel = 'noopener';
+      }
+      paragraph.append(link);
+      container.append(paragraph);
+      return;
+    }
     document.querySelectorAll(selector).forEach(link => {
       link.href = entry.link_url;
       const icon = link.querySelector('i');

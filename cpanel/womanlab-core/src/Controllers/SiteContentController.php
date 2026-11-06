@@ -15,11 +15,9 @@ final class SiteContentController
     public static function publicIndex(PDO $db): never
     {
         $query = $db->query(
-            'SELECT c.section, c.slug,
-                    CASE WHEN c.product_sku IS NOT NULL THEN p.nombre ELSE c.title END AS title,
-                    CASE WHEN c.product_sku IS NOT NULL THEN p.descripcion ELSE c.description END AS description,
-                    CASE WHEN c.product_sku IS NOT NULL THEN p.precio ELSE c.price END AS price,
-                    c.product_sku, c.image_url, c.link_url, c.details_json, c.sort_order
+            'SELECT c.section, c.slug, c.title, c.description,
+                CASE WHEN c.product_sku IS NOT NULL THEN p.precio ELSE c.price END AS price,
+                c.product_sku, c.image_url, c.link_url, c.details_json, c.sort_order
              FROM site_content c
              LEFT JOIN productos p ON p.sku = c.product_sku
              WHERE c.activo = 1 AND (c.product_sku IS NULL OR p.activo = 1)
@@ -41,9 +39,7 @@ final class SiteContentController
         if (!in_array($section, self::SECTIONS, true)) ApiResponse::fail('invalid_content_section', 422);
         if ($method === 'GET') {
             $query = $db->prepare(
-                'SELECT c.id, c.section, c.slug,
-                        CASE WHEN c.product_sku IS NOT NULL AND p.id IS NOT NULL THEN p.nombre ELSE c.title END AS title,
-                        CASE WHEN c.product_sku IS NOT NULL AND p.id IS NOT NULL THEN p.descripcion ELSE c.description END AS description,
+                'SELECT c.id, c.section, c.slug, c.title, c.description,
                         CASE WHEN c.product_sku IS NOT NULL AND p.id IS NOT NULL THEN p.precio ELSE c.price END AS price,
                         c.product_sku, c.image_url, c.link_url, c.details_json, c.sort_order, c.activo
                  FROM site_content c LEFT JOIN productos p ON p.sku = c.product_sku

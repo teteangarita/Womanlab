@@ -16,6 +16,17 @@ final class Auth
         if ($user === null) {
             ApiResponse::fail('authentication_required', 401);
         }
+        $query = Database::connection()->prepare('SELECT rol, activo FROM usuarios WHERE id = ? LIMIT 1');
+        $query->execute([(int) ($user['id'] ?? 0)]);
+        $current = $query->fetch();
+        if (!$current || !(int) $current['activo']) {
+            unset($_SESSION['user'], $_SESSION['csrf_token']);
+            ApiResponse::fail('authentication_required', 401);
+        }
+        if ($current['rol'] !== $user['rol']) {
+            $_SESSION['user']['rol'] = $current['rol'];
+            $user['rol'] = $current['rol'];
+        }
         if ($role === 'admin' && $user['rol'] !== 'admin') {
             ApiResponse::fail('forbidden', 403);
         }

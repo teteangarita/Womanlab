@@ -59,18 +59,21 @@ Revisa `git status` y el contenido de cada staging antes de confirmar. No subas 
 
 ## Base de datos
 
-`womanlab-core/database/schema.sql` crea tablas InnoDB con `utf8mb4_unicode_ci`; `seeds.sql` inserta el catálogo que hoy aparece en `worker.js` y la tienda. Las tablas tienen estas responsabilidades:
+`womanlab-core/database/schema.sql` crea tablas InnoDB con `utf8mb4_unicode_ci`; `seeds.sql` inserta el catálogo que hoy aparece en `worker.js` y la tienda. `site_content` separa el contenido de presentación de los productos cobrables. Las tablas tienen estas responsabilidades:
 
 | Tabla | Uso y relaciones |
 |---|---|
-| `usuarios` | Cuenta, hash de contraseña, rol cliente/admin y verificación de correo con vencimiento. Email y token son únicos. |
+| `usuarios` | Cuenta, hash de contraseña, rol cliente/admin, estado activo y verificación de correo con vencimiento. Email y token son únicos. |
 | `productos` | Catálogo y stock. `sku` es la clave pública estable que usa el carrito; `precio` es un entero CLP. |
+| `site_content` | Membresías/promociones, staff, servicios y contacto. Puede enlazar `product_sku`; editar el precio de esa entrada actualiza también el producto que utiliza checkout. El contenido público se sirve desde `/api/content.php`. |
 | `ordenes` | Cliente, usuario opcional, total calculado en servidor, estado, referencias TUU y vencimiento de reserva. |
 | `orden_items` | Artículos y precio unitario histórico; referencia producto y orden. |
 
 `expira_en` es un campo adicional: permite liberar reservas de pago abandonadas. Los planes y servicios iniciales usan stock `999999` como disponibilidad virtual; ajusta esa convención si necesitas cupos reales.
 
-En cPanel crea primero la base y el usuario desde **MySQL Databases**. Si cPanel prefija sus nombres, selecciona la base al importar y omite/ajusta `CREATE DATABASE` y `USE womanlab` al comienzo de los SQL. Importa primero `schema.sql` y luego `seeds.sql`.
+En cPanel crea primero la base y el usuario desde **MySQL Databases**. Si cPanel prefija sus nombres, selecciona la base al importar y omite/ajusta `CREATE DATABASE` y `USE womanlab` al comienzo de los SQL. En una instalación nueva importa `schema.sql` y luego `seeds.sql`. En una instalación anterior aplica solo `database/migrations/0002_admin_content.sql` y `database/cms-seeds.sql`; no vuelvas a importar `seeds.sql` para no restablecer precios del catálogo.
+
+Después de editar precios o textos desde el administrador, no vuelvas a aplicar los seeds: los seeds son solo para instalación inicial y pueden reponer los valores iniciales. La migración CMS es repetible; su seed usa `INSERT IGNORE` y no sobrescribe entradas ya editadas.
 
 El usuario `admin@example.test` del seed tiene la contraseña temporal `AuditOnly-2026-Test!`. Es únicamente para una base local aislada. Antes de cargar datos en un servidor, elimina esa fila o reemplaza inmediatamente la contraseña por una cuenta con hash generado con `password_hash()` y cambia su correo; nunca expongas esta cuenta en producción.
 
@@ -116,7 +119,9 @@ En el portal TUU:
 
 Rutas de autenticación: `POST /api/auth.php?action=register`, `login`, `me` y `logout`; verificación por enlace `GET /api/auth.php?action=verify&token=...`. Registro valida email, exige contraseña de al menos 12 caracteres, almacena `password_hash()` y un hash SHA-256 del token aleatorio. El token vence en 24 horas. El correo usa `mail()` con alternativa texto/HTML; prueba entregabilidad o conecta SMTP autenticado antes de publicar.
 
-Las sesiones usan cookie `Secure`, `HttpOnly`, `SameSite=Strict`, regeneración de ID al iniciar sesión y CSRF en cambios administrativos. La administración está en `/admin/`; solo rol `admin`. La API permite listar/crear/editar/desactivar productos, subir imágenes JPEG/PNG/WebP hasta 5 MB e historial de pedidos filtrado por fecha/estado. Restringe además el acceso a `/admin` por VPN/IP si el hosting lo permite.
+Las sesiones usan cookie `Secure`, `HttpOnly`, `SameSite=Strict`, regeneración de ID al iniciar sesión y CSRF en cambios administrativos. La administración está en `/admin/`; solo rol `admin`. El panel incluye búsqueda de productos, CRUD de catálogo, filtros de pedidos, CRUD de clientes con baja lógica y pestañas CMS para membresías/promociones, staff, servicios y contacto. Desactivar un cliente impide nuevos inicios de sesión y sus siguientes solicitudes protegidas. Los precios de membresías/servicios vinculados actualizan el SKU que valida checkout. Se pueden subir imágenes JPEG/PNG/WebP de hasta 5 MB. Restringe además el acceso a `/admin` por VPN/IP si el hosting lo permite.
+
+En una base que ya tenía el esquema anterior, aplica `womanlab-core/database/migrations/0002_admin_content.sql` y después `womanlab-core/database/cms-seeds.sql`. El seed CMS usa `INSERT IGNORE`: añade las filas iniciales que falten sin reemplazar ediciones. No vuelvas a importar el seed general para desplegar cambios de administrador.
 
 ## Ejecución local
 
