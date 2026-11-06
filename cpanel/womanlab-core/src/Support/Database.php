@@ -37,12 +37,19 @@ final class Database
             self::$configuration['charset'] ?: 'utf8mb4'
         );
 
-        self::$connection = new PDO($dsn, self::$configuration['user'], self::$configuration['password'], [
+        $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
             PDO::ATTR_STRINGIFY_FETCHES => false,
-        ]);
+        ];
+        $sslCa = getenv('DB_SSL_CA');
+        if (is_string($sslCa) && $sslCa !== '') {
+            $options[PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+        }
+
+        self::$connection = new PDO($dsn, self::$configuration['user'], self::$configuration['password'], $options);
 
         return self::$connection;
     }

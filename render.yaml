@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: womanlab
+    env: docker
+    plan: free
+    branch: feature/migration-php-tuu
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_SSL_CA_PEM
+        sync: false
+      - key: TUU_API_URL
+        value: https://frontend-api.payment.haulmer.dev/v1/payment
+      - key: TUU_ACCOUNT_ID
+        sync: false
+      - key: TUU_API_KEY
+        sync: false
+      - key: TUU_CHECKOUT_ENABLED
+        value: "0"
+      - key: TUU_PAYMENT_HOSTS
+        sync: false
+      - key: TUU_RETURN_URL
+        sync: false
+      - key: TUU_WEBHOOK_URL
+        sync: false
+      - key: TUU_WEBHOOK_SECRET
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
