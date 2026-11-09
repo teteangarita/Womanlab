@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$reference = $_GET['ref'] ?? $_GET['x_reference'] ?? '';
+$reference = $_GET['x_reference'] ?? $_GET['ref'] ?? '';
 $reference = is_string($reference) && preg_match('/^ORD-[0-9]{8}-[A-F0-9]{8}$/D', $reference) ? $reference : '';
 $basePath = dirname(dirname(parse_url($_SERVER['SCRIPT_NAME'] ?? '/', PHP_URL_PATH) ?: '/'));
 $basePath = $basePath === '/' || $basePath === '.' ? '' : rtrim($basePath, '/');

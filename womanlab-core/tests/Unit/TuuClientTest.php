@@ -33,8 +33,8 @@ final class TuuClientTest extends TestCase
                 TestCase::assertSame('CLP', $payload['x_currency']);
                 TestCase::assertSame(TuuClient::signFields($payload, 'test-key'), $payload['x_signature']);
                 TestCase::assertSame('https://womanlab.test/api/webhook_tuu.php', $payload['x_url_callback']);
-                TestCase::assertSame('https://womanlab.test/pago/exito.php?ref=order-test-1', $payload['x_url_complete']);
-                TestCase::assertSame('https://womanlab.test/pago/cancelado.php?ref=order-test-1', $payload['x_url_cancel']);
+                TestCase::assertSame('https://womanlab.test/pago/exito.php', $payload['x_url_complete']);
+                TestCase::assertSame('https://womanlab.test/pago/cancelado.php', $payload['x_url_cancel']);
                 TestCase::assertArrayNotHasKey('secret', $payload);
                 return ['url' => 'https://checkout.tuu.cl/session/123', 'token' => 'session-123'];
             }

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$reference = $_GET['ref'] ?? $_GET['x_reference'] ?? '';
+$reference = $_GET['x_reference'] ?? $_GET['ref'] ?? '';
 if (!is_string($reference) || !preg_match('/^ORD-[0-9]{8}-[A-F0-9]{8}$/D', $reference)) {
     http_response_code(400);
     exit('Referencia de pago no válida.');

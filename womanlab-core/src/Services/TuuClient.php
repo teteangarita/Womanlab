@@ -41,8 +41,8 @@ final class TuuClient
         $reference = (string) $order['codigo_orden'];
         $basePath = function_exists('womanlab_base_path') ? womanlab_base_path() : '';
         $publicUrl = $appUrl . $basePath;
-        $cancelUrl = $publicUrl . '/pago/cancelado.php?ref=' . rawurlencode($reference);
-        $completeUrl = $publicUrl . '/pago/exito.php?ref=' . rawurlencode($reference);
+        $cancelUrl = $publicUrl . '/pago/cancelado.php';
+        $completeUrl = $publicUrl . '/pago/exito.php';
         $webhookUrl = $publicUrl . '/api/webhook_tuu.php';
         $payload = [
             'x_account_id' => $accountId,
