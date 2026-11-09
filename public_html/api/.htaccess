@@ -5,3 +5,8 @@ Options -Indexes
 <Files "diagnostico.php">
   Require all denied
 </Files>
+
+# TUU llama desde IPs externas; la firma se valida en PHP.
+<Files "webhook_tuu.php">
+  Require all granted
+</Files>

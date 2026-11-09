@@ -1,5 +1,10 @@
 Options -Indexes
 
+# El Passenger heredado de la raíz de la cuenta falla al arrancar y da 500 en directorios sin "/".
+<IfModule mod_passenger.c>
+  PassengerEnabled off
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
