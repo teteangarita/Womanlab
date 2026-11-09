@@ -5,13 +5,34 @@ namespace WomanLab\Services;
 
 final class WebhookSignature
 {
-    public static function valid(string $raw, string $secret, string $signature): bool
+    public static function parse(string $raw): ?array
     {
-        if ($secret === '') {
+        if ($raw === '' || strlen($raw) > 65536) {
+            return null;
+        }
+        $fields = [];
+        foreach (explode('&', $raw) as $pair) {
+            if ($pair === '' || !str_contains($pair, '=') || preg_match('/%(?![0-9a-fA-F]{2})/', $pair)) {
+                return null;
+            }
+            [$encodedKey, $encodedValue] = explode('=', $pair, 2);
+            $key = urldecode($encodedKey);
+            $value = urldecode($encodedValue);
+            if ($key === '' || str_contains($key, '[') || str_contains($key, ']')
+                || array_key_exists($key, $fields) || !preg_match('//u', $key) || !preg_match('//u', $value)) {
+                return null;
+            }
+            $fields[$key] = $value;
+        }
+        return $fields;
+    }
+
+    public static function valid(array $fields, string $secret): bool
+    {
+        $signature = $fields['x_signature'] ?? '';
+        if ($secret === '' || !is_string($signature) || preg_match('/^[a-f0-9]{64}$/', $signature) !== 1) {
             return false;
         }
-        $signature = preg_replace('/^sha256=/i', '', trim($signature)) ?? '';
-        return preg_match('/^[a-f0-9]{64}$/i', $signature) === 1
-            && hash_equals(hash_hmac('sha256', $raw, $secret), strtolower($signature));
+        return hash_equals(TuuClient::signFields($fields, $secret), $signature);
     }
 }

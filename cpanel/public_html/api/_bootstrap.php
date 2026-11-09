@@ -10,4 +10,9 @@ if (!is_file($corePath . '/config/bootstrap.php')) {
 }
 require_once $corePath . '/config/bootstrap.php';
 
-return WomanLab\Support\Database::connection();
+try {
+    return WomanLab\Support\Database::connection();
+} catch (Throwable $error) {
+    error_log('Database connection failed: ' . get_class($error));
+    WomanLab\Support\ApiResponse::fail('service_unavailable', 503);
+}

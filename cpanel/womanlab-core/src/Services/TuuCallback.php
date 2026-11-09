@@ -1,0 +1,74 @@
+<?php
+declare(strict_types=1);
+
+namespace WomanLab\Services;
+
+use PDO;
+use Throwable;
+
+final class TuuCallback
+{
+    public function __construct(private readonly PDO $db)
+    {
+    }
+
+    public static function validate(array $fields, string $account): ?string
+    {
+        foreach (['x_account_id', 'x_reference', 'x_amount', 'x_currency', 'x_result'] as $name) {
+            if (!isset($fields[$name]) || !is_string($fields[$name]) || $fields[$name] === '') {
+                return 'invalid_webhook';
+            }
+        }
+        if ($account === '' || !hash_equals($account, $fields['x_account_id'])) {
+            return 'account_mismatch';
+        }
+        if (strlen($fields['x_reference']) > 36 || preg_match('/^[A-Za-z0-9-]+$/D', $fields['x_reference']) !== 1
+            || preg_match('/^[0-9]{1,10}(?:\.0{1,2})?$/D', $fields['x_amount']) !== 1
+            || $fields['x_currency'] !== 'CLP'
+            || !in_array($fields['x_result'], ['completed', 'failed', 'pending'], true)) {
+            return 'invalid_webhook';
+        }
+        return null;
+    }
+
+    public function process(array $fields): array
+    {
+        try {
+            $this->db->beginTransaction();
+            $query = $this->db->prepare('SELECT id, codigo_orden, monto_total, estado, tuu_callback_signature FROM ordenes WHERE codigo_orden = ? FOR UPDATE');
+            $query->execute([$fields['x_reference']]);
+            $order = $query->fetch(PDO::FETCH_ASSOC);
+            if (!$order || !hash_equals((string) $order['codigo_orden'], $fields['x_reference'])) {
+                $this->db->rollBack();
+                return ['order_not_found', 404];
+            }
+            $amount = explode('.', $fields['x_amount'], 2)[0];
+            if ((ltrim($amount, '0') ?: '0') !== (string) $order['monto_total']) {
+                $this->db->rollBack();
+                return ['amount_mismatch', 409];
+            }
+            if ($fields['x_result'] !== 'failed') {
+                $this->db->rollBack();
+                return ['callback_not_supported', 503];
+            }
+            if ($order['estado'] === 'PENDIENTE') {
+                $update = $this->db->prepare("UPDATE ordenes SET estado = 'RECHAZADA', tuu_callback_signature = ? WHERE id = ? AND estado = 'PENDIENTE'");
+                $update->execute([$fields['x_signature'], $order['id']]);
+                if ($update->rowCount() !== 1) {
+                    throw new \RuntimeException('No se pudo actualizar la orden.');
+                }
+            } elseif ($order['estado'] !== 'RECHAZADA' || !is_string($order['tuu_callback_signature'])
+                || !hash_equals($order['tuu_callback_signature'], $fields['x_signature'])) {
+                $this->db->rollBack();
+                return ['order_state_conflict', 409];
+            }
+            $this->db->commit();
+            return ['ok', 200];
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+}

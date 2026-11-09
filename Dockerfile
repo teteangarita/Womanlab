@@ -18,6 +18,7 @@ COPY docker/entrypoint.sh /usr/local/bin/womanlab-entrypoint
 WORKDIR /var/www
 RUN composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative \
     && sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
+    && sed -i '/RewriteCond %{HTTPS} !=on/a\  RewriteCond %{HTTP:X-Forwarded-Proto} !^https$ [NC]' /var/www/html/.htaccess \
     && a2enconf womanlab-render \
     && mkdir -p /var/www/html/uploads/images \
     && chown -R www-data:www-data /var/www/html/uploads

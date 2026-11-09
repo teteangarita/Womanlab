@@ -13,10 +13,12 @@ use WomanLab\Support\Auth;
 
 final class CheckoutController
 {
+    private const PAYMENT_INTEGRATION_VERIFIED = false;
+
     public static function create(PDO $db): never
     {
         try {
-            if (($_ENV['TUU_CHECKOUT_ENABLED'] ?? '') !== '1') {
+            if (!self::PAYMENT_INTEGRATION_VERIFIED || ($_ENV['TUU_CHECKOUT_ENABLED'] ?? '') !== '1') {
                 ApiResponse::json(['error' => 'payment_not_available', 'message' => 'El pago en línea aún no está habilitado.'], 503);
             }
             $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');

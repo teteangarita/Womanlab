@@ -10,12 +10,20 @@ final class WebhookSignatureTest extends TestCase
 {
     public function testValidatesRawBodyAndRejectsTampering(): void
     {
-        $raw = '{"status":"PAID","amount":40000}';
-        $signature = hash_hmac('sha256', $raw, 'test-secret');
+        $signature = hash_hmac('sha256', 'x_amount40000x_messagePago éxitosox_referenceorder-1', 'test-secret');
+        $raw = 'x_reference=order-1&x_message=Pago+%C3%A9xitoso&x_amount=40000&ignored=yes&x_signature=' . $signature;
+        $fields = WebhookSignature::parse($raw);
+        self::assertIsArray($fields);
+        self::assertTrue(WebhookSignature::valid($fields, 'test-secret'));
+        $fields['x_amount'] = '40001';
+        self::assertFalse(WebhookSignature::valid($fields, 'test-secret'));
+        self::assertFalse(WebhookSignature::valid($fields, ''));
+    }
 
-        self::assertTrue(WebhookSignature::valid($raw, 'test-secret', 'sha256=' . $signature));
-        self::assertFalse(WebhookSignature::valid($raw . ' ', 'test-secret', $signature));
-        self::assertFalse(WebhookSignature::valid($raw, '', $signature));
-        self::assertFalse(WebhookSignature::valid($raw, 'test-secret', 'invalid'));
+    public function testRejectsAmbiguousOrMalformedForms(): void
+    {
+        foreach (['x_amount=1&x_amount=2', 'x_amount=1&x%5Famount=2', 'x_a[]=1', 'x_a=%zz', 'x_a=%FF', 'x_a', ''] as $raw) {
+            self::assertNull(WebhookSignature::parse($raw));
+        }
     }
 }

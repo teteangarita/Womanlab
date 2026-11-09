@@ -19,23 +19,27 @@ if (!function_exists('womanlab_base_path')) {
 }
 
 foreach ([
-    'APP_URL', 'APP_TIMEZONE', 'TUU_API_KEY', 'TUU_API_URL', 'TUU_ACCOUNT_ID', 'TUU_PAYMENT_HOSTS', 'TUU_CHECKOUT_ENABLED',
-    'TUU_RETURN_URL', 'TUU_WEBHOOK_URL', 'TUU_WEBHOOK_SECRET', 'TUU_SIGNATURE_HEADER',
+    'APP_URL', 'APP_TIMEZONE', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD',
+    'TUU_API_KEY', 'TUU_API_URL', 'TUU_ACCOUNT_ID', 'TUU_PAYMENT_HOSTS', 'TUU_CHECKOUT_ENABLED',
     'TUU_DTE_URL', 'MAIL_FROM', 'PUBLIC_UPLOAD_DIR',
 ] as $key) {
     $value = getenv($key);
-    if (is_string($value) && $value !== '') {
+    if (is_string($value) && ($value !== '' || $key === 'DB_PASSWORD')) {
         $_ENV[$key] = $value;
     }
 }
 
 $env = static function (string $key, string $default = ''): string {
     $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    return is_string($value) && $value !== '' ? $value : $default;
+    return is_string($value) && ($value !== '' || $key === 'DB_PASSWORD') ? $value : $default;
 };
 
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
+$logDirectory = dirname(__DIR__) . '/logs';
+if (is_dir($logDirectory) && is_writable($logDirectory)) {
+    ini_set('error_log', $logDirectory . '/php_errors.log');
+}
 date_default_timezone_set($env('APP_TIMEZONE', 'America/Santiago'));
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
