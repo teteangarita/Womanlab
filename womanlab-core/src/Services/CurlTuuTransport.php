@@ -29,6 +29,19 @@ final class CurlTuuTransport implements TuuTransport
         if (!isset($payload['x_account_id']) && isset($payload['reference'])) {
             $headers[] = 'Idempotency-Key: ' . ($payload['reference'] ?? '');
         }
+        // TEMPORAL: log completo de la petición TUU (contiene secretos); eliminar tras depurar.
+        $debugJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $debugCurl = 'curl -i -X POST ' . escapeshellarg($url);
+        foreach ($headers as $debugHeader) {
+            $debugCurl .= ' \\' . PHP_EOL . '  -H ' . escapeshellarg($debugHeader);
+        }
+        $debugCurl .= ' \\' . PHP_EOL . '  --data-raw ' . escapeshellarg((string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $debugLog = str_repeat('=', 70) . PHP_EOL . date('c') . ' TUU DEBUG REQUEST' . PHP_EOL
+            . 'URL: ' . $url . PHP_EOL . 'METHOD: POST' . PHP_EOL
+            . 'HEADERS:' . PHP_EOL . implode(PHP_EOL, $headers) . PHP_EOL
+            . 'PAYLOAD:' . PHP_EOL . $debugJson . PHP_EOL
+            . 'CURL:' . PHP_EOL . $debugCurl . PHP_EOL;
+        @file_put_contents(dirname(__DIR__, 2) . '/logs/tuu_debug.log', $debugLog, FILE_APPEND | LOCK_EX);
         curl_setopt_array($handle, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
@@ -43,6 +56,10 @@ final class CurlTuuTransport implements TuuTransport
         $body = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_error($handle);
+        // TEMPORAL
+        @file_put_contents(dirname(__DIR__, 2) . '/logs/tuu_debug.log',
+            'RESPONSE HTTP ' . $status . ' error=' . $error . PHP_EOL . (is_string($body) ? $body : '') . PHP_EOL . PHP_EOL,
+            FILE_APPEND | LOCK_EX);
         if (!is_string($body) || !in_array($status, [200, 201], true)) {
             $safeBody = is_string($body) ? self::sanitizeResponse($body, $payload, $apiKey) : '';
             $message = date('c') . ' TUU request failed: HTTP ' . $status

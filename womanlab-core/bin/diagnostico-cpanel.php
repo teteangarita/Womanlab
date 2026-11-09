@@ -6,6 +6,8 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
+ob_start();
+
 $corePath = dirname(__DIR__);
 $projectPath = dirname($corePath);
 $envPath = $corePath . '/.env';
@@ -181,4 +183,5 @@ if (extension_loaded('curl')) {
 }
 
 echo sprintf('Resultado: %d error(es), %d aviso(s).%s', $errors, $warnings, PHP_EOL);
+ob_end_flush();
 exit($errors > 0 ? 1 : 0);

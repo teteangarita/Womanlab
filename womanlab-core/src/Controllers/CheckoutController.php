@@ -10,6 +10,7 @@ use WomanLab\Services\CheckoutException;
 use WomanLab\Services\TuuClient;
 use WomanLab\Support\ApiResponse;
 use WomanLab\Support\Auth;
+use WomanLab\Support\DebugLog;
 
 final class CheckoutController
 {
@@ -24,6 +25,20 @@ final class CheckoutController
     public static function create(PDO $db): never
     {
         try {
+            DebugLog::write('CHECKOUT 1 recibido', [
+                'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'origin' => $_SERVER['HTTP_ORIGIN'] ?? null,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'APP_URL' => $_ENV['APP_URL'] ?? null,
+                'APP_ENV' => $_ENV['APP_ENV'] ?? null,
+                'enabled' => self::checkoutEnabled($_ENV),
+                'TUU_CHECKOUT_ENABLED' => $_ENV['TUU_CHECKOUT_ENABLED'] ?? null,
+                'TUU_API_URL' => $_ENV['TUU_API_URL'] ?? null,
+                'TUU_ACCOUNT_ID' => $_ENV['TUU_ACCOUNT_ID'] ?? null,
+                'TUU_SECRET_KEY_set' => !empty($_ENV['TUU_SECRET_KEY']),
+            ]);
             if (!self::checkoutEnabled($_ENV)) {
                 ApiResponse::json(['error' => 'payment_not_available', 'message' => 'El pago en línea aún no está habilitado.'], 503);
             }
@@ -42,6 +57,7 @@ final class CheckoutController
                 }
             }
             $payload = ApiResponse::input();
+            DebugLog::write('CHECKOUT 2 body recibido', $payload);
             $customer = $payload['cliente'] ?? null;
             if (!is_array($customer)) {
                 ApiResponse::fail('invalid_customer', 422);
@@ -67,6 +83,7 @@ final class CheckoutController
                 'telefono' => $phone,
             ], $user ? (int) $user['id'] : null);
 
+            DebugLog::write('CHECKOUT 3 orden pendiente creada', $order);
             try {
                 $payment = (new TuuClient())->createCheckout($order, $order['items'], [
                     'name' => $name,
@@ -75,7 +92,9 @@ final class CheckoutController
                 ]);
                 $update = $db->prepare('UPDATE ordenes SET tuu_token = ?, tuu_transaction_id = ? WHERE id = ? AND estado = \'PENDIENTE\'');
                 $update->execute([$payment['token'], $payment['transaction_id'], $order['id']]);
+                DebugLog::write('CHECKOUT 4 pago creado', $payment);
             } catch (Throwable $error) {
+                DebugLog::write('CHECKOUT ERROR creando pago (orden RECHAZADA)', ['class' => $error::class, 'message' => $error->getMessage(), 'file' => $error->getFile() . ':' . $error->getLine()]);
                 $db->prepare("UPDATE ordenes SET estado = 'RECHAZADA' WHERE id = ? AND estado = 'PENDIENTE'")->execute([$order['id']]);
                 throw $error;
             }
@@ -87,6 +106,7 @@ final class CheckoutController
             ], 201);
         } catch (Throwable $error) {
             error_log('Checkout failed: ' . $error->getMessage());
+            DebugLog::write('CHECKOUT ERROR final', ['class' => $error::class, 'message' => $error->getMessage(), 'file' => $error->getFile() . ':' . $error->getLine(), 'trace' => $error->getTraceAsString()]);
             if ($error instanceof CheckoutException) {
                 ApiResponse::json(['error' => $error->getMessage()], $error->httpStatus);
             }

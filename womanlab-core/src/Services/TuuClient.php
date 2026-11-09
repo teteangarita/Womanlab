@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace WomanLab\Services;
 
 use RuntimeException;
+use WomanLab\Support\DebugLog;
 
 final class TuuClient
 {
@@ -60,7 +61,24 @@ final class TuuClient
         ];
         $payload['x_signature'] = self::signFields($payload, $secretKey);
 
+        $debugFields = array_filter($payload, static fn (string $k): bool => $k !== 'x_signature', ARRAY_FILTER_USE_KEY);
+        ksort($debugFields, SORT_STRING);
+        $debugCanonical = '';
+        foreach ($debugFields as $k => $v) {
+            $debugCanonical .= $k . (string) $v;
+        }
+        DebugLog::write('TUU createCheckout payload final', [
+            'checkoutUrl' => $checkoutUrl,
+            'order' => $order,
+            'customer' => $customer,
+            'publicUrl' => $publicUrl,
+            'basePath' => $basePath,
+            'canonical_string_firmada' => $debugCanonical,
+            'payload' => $payload,
+        ]);
+
         $response = $this->request($checkoutUrl, $payload);
+        DebugLog::write('TUU createCheckout respuesta decodificada', $response);
         $paymentUrl = $response['url'] ?? $response['checkout_url'] ?? $response['payment_url'] ?? null;
         $token = $response['token'] ?? $response['session_token'] ?? null;
         if (!is_string($paymentUrl) || $paymentUrl === '') {

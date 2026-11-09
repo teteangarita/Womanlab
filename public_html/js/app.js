@@ -627,12 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentMessage.textContent = 'Conectando con TUU…';
 
     try {
+      console.log('[DEBUG checkout] click Continuar con Haulmer', { url: `${storefrontBasePath}/api/checkout.php`, payload, cart });
       const response = await fetch(`${storefrontBasePath}/api/checkout.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const result = await response.json();
+      console.log('[DEBUG checkout] respuesta', response.status, result);
 
       if (!response.ok || !result.payment_url) {
         throw new Error(result.message || result.error || 'No se pudo iniciar el pago. Inténtalo nuevamente.');
@@ -645,6 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       window.location.assign(paymentUrl.toString());
     } catch (error) {
+      console.error('[DEBUG checkout] error', error);
       paymentMessage.textContent = error.message || 'No se pudo conectar con el proveedor. Contacta a Woman Lab.';
       btnStartPayment.disabled = false;
     }
