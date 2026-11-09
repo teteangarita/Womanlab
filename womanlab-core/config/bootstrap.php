@@ -27,7 +27,7 @@ if (!function_exists('womanlab_base_path')) {
 
 foreach ([
     'APP_ENV', 'APP_URL', 'APP_TIMEZONE', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PASS',
-    'TUU_API_KEY', 'TUU_API_URL', 'TUU_ACCOUNT_ID', 'TUU_PAYMENT_HOSTS', 'TUU_CHECKOUT_ENABLED',
+    'TUU_SECRET_KEY', 'TUU_API_URL', 'TUU_ACCOUNT_ID', 'TUU_PAYMENT_HOSTS', 'TUU_CHECKOUT_ENABLED',
     'TUU_DTE_URL', 'MAIL_FROM', 'PUBLIC_UPLOAD_DIR',
 ] as $key) {
     $value = getenv($key);

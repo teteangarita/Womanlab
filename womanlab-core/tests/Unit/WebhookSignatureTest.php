@@ -18,6 +18,9 @@ final class WebhookSignatureTest extends TestCase
         $fields['x_amount'] = '40001';
         self::assertFalse(WebhookSignature::valid($fields, 'test-secret'));
         self::assertFalse(WebhookSignature::valid($fields, ''));
+        $fields['x_amount'] = '40000';
+        $fields['x_signature'] = str_repeat('0', 64);
+        self::assertFalse(WebhookSignature::valid($fields, 'test-secret'));
     }
 
     public function testRejectsAmbiguousOrMalformedForms(): void

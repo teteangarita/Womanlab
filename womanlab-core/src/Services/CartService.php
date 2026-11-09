@@ -87,7 +87,7 @@ final class CartService
                 ];
             }
 
-            $code = self::uuid();
+            $code = self::orderCode();
             $insert = $this->db->prepare(
                 "INSERT INTO ordenes
                  (codigo_orden, usuario_id, cliente_nombre, cliente_email, cliente_telefono, monto_total, estado, expira_en)
@@ -117,12 +117,8 @@ final class CartService
         }
     }
 
-    public static function uuid(): string
+    public static function orderCode(): string
     {
-        $bytes = random_bytes(16);
-        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
-        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
-        $hex = bin2hex($bytes);
-        return sprintf('%s-%s-%s-%s-%s', substr($hex, 0, 8), substr($hex, 8, 4), substr($hex, 12, 4), substr($hex, 16, 4), substr($hex, 20));
+        return 'ORD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
     }
 }

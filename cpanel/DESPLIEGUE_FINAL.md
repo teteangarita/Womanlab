@@ -2,7 +2,7 @@
 
 ## Antes de comenzar
 
-Esta guía prepara el hosting y la base de datos, pero **el checkout no está listo para producción**. El modo sandbox debe activarse explícitamente y utilizar una base desechable y aislada. El callback firmado procesa `completed` en sandbox y descuenta stock de forma atómica; `pending` no modifica la orden. El identificador se guarda solo si llega como `x_transaction_id` firmado; si falta queda vacío, nunca se inventa. No uses credenciales de producción ni intentes compras reales hasta confirmar el contrato de TUU, verificar reintentos y concurrencia y revisar la conciliación y emisión DTE.
+Esta guía prepara el hosting y la base de datos. El checkout está desactivado por defecto con `TUU_CHECKOUT_ENABLED=0`; habilítalo solo después de probar sandbox. El callback firmado procesa `completed` de forma transaccional e idempotente y descuenta stock; `pending` no modifica la orden. El identificador se guarda solo si llega como `x_transaction_id` firmado. Antes de producción, confirma con TUU el contrato de la cuenta, reintentos, concurrencia, conciliación y emisión DTE.
 
 ## 1. Subida de archivos
 
@@ -44,7 +44,7 @@ Si usas el Administrador de archivos, sube el contenido de cada carpeta a los mi
 2. En **Bases de datos MySQL**, crea la base y el usuario, añade el usuario a la base y otorga permisos sobre ella. Apunta sus nombres completos con prefijo, por ejemplo `usuario_womanlab` y `usuario_wlab`.
 3. En **phpMyAdmin**, selecciona esa base en el panel izquierdo. En **Importar**, selecciona `womanlab-core/database/schema.sql` y ejecuta la importación. Repite con `seeds.sql`. Los archivos no crean ni seleccionan otra base. No reapliques seeds en una instalación existente: pueden restablecer precios y credenciales.
 4. El seed crea `admin@example.test` con contraseña pública `AuditOnly-2026-Test!`. Úsala solo en un entorno aislado. **Antes de publicar**, elimina la cuenta o cambia su correo y hash con `password_hash()`. Nunca dejes esa contraseña en producción. La guía `cpanel/README.md` contiene información adicional de migraciones y administración.
-5. Si la base ya existía antes de la migración de callbacks, haz un respaldo y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql`. No la ejecutes sobre una base nueva creada con el esquema actual.
+5. Si la base ya existía antes de las migraciones de callbacks, haz un respaldo y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql` y `database/migrations/0004_tuu_callback_message.sql` cuando falten esas columnas. No las ejecutes sobre una base nueva creada con el esquema actual.
 
 ## 3. Archivo privado de configuración
 
@@ -61,7 +61,7 @@ DB_USER=daysimontoya
 DB_PASS=REEMPLAZAR_CON_PASSWORD_PRIVADA
 TUU_API_URL=https://frontend-api.payment.haulmer.dev/v1/payment
 TUU_ACCOUNT_ID=62224230
-TUU_API_KEY=REEMPLAZAR_CON_LLAVE_SANDBOX_DE_TUU
+TUU_SECRET_KEY=REEMPLAZAR_CON_LLAVE_SANDBOX_ROTADA
 TUU_CHECKOUT_ENABLED=0
 TUU_PAYMENT_HOSTS=HOST_DE_CHECKOUT_CONFIRMADO_POR_TUU
 TUU_DTE_URL=
@@ -89,7 +89,7 @@ En **SSL/TLS Status**, activa AutoSSL y verifica el certificado de `shop.womanla
 ## 5. Primera prueba sandbox
 
 1. Solicita a TUU un ejemplo real de callback firmado de pago aprobado, el nombre y la semántica del identificador de transacción, el host de checkout y las credenciales de sandbox. La documentación oficial: https://developers.tuu.cl/docs/payment-intent.
-2. Solo en una instalación aislada con base desechable y HTTPS público propio, cambia `APP_ENV=sandbox` y `TUU_CHECKOUT_ENABLED=1`. El código exige además el endpoint sandbox exacto y la cuenta de pruebas `62224230`; no habilita producción. `TUU_PAYMENT_HOSTS` debe contener el host de pago confirmado por TUU. Nunca compartas la base con producción.
+2. Solo en una instalación aislada con base desechable y HTTPS público propio, configura `APP_ENV=sandbox` y `TUU_CHECKOUT_ENABLED=1`, endpoint, cuenta y llave de sandbox. `TUU_PAYMENT_HOSTS` puede restringir el host de pago confirmado por TUU. Nunca compartas la base con producción.
 3. En la prueba local realizada, TUU respondió HTTP 302 hacia cancelación con `x_result=failed` y `Error validacion`; el checkout respondió 503 y marcó el pedido como rechazado. Solicita a TUU el motivo antes de afirmar que existe una sesión funcional.
 4. Una vez resuelto el error, realiza una compra con las tarjetas de prueba publicadas por TUU; comprueba importe, callback, orden, stock y logs. Repite callbacks, rechazo, reserva vencida y firma inválida. El navegador no confirma el pago y una URL con HTTP 200 no demuestra que funcione el webhook.
-5. El modo producción sigue bloqueado en el código. Antes de cambiarlo, confirma el identificador real, reintentos, conciliación, pagos tardíos y DTE con TUU; revisa seguridad y pruebas de concurrencia y programa los procesos de expiración y DTE descritos en `cpanel/DEPLOY_CPANEL.md`.
+5. El código permite usar la configuración seleccionada cuando `TUU_CHECKOUT_ENABLED=1`; por eso mantén `0` en producción hasta confirmar el identificador real, reintentos, conciliación, pagos tardíos y DTE con TUU, y completar pruebas de seguridad y concurrencia. Programa los procesos de expiración y DTE descritos en `cpanel/DEPLOY_CPANEL.md`.

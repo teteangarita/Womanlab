@@ -16,7 +16,7 @@ La versión PHP conectada a MariaDB está en `public_html/`; ejecuta `php -S loc
 
 Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `public_html` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
 
-**Pagos aún no aptos para producción:** el webhook verifica el formulario firmado, pero la interoperabilidad y el identificador de transacción todavía no se han validado con TUU. El checkout solo puede activarse para sandbox aislado con la configuración explícita indicada en `cpanel/DESPLIEGUE_FINAL.md`. El contenedor además bloquea `/api/checkout.php` mientras `TUU_CHECKOUT_ENABLED=0`.
+**Pagos aún no aptos para producción:** el webhook valida el formulario firmado y procesa estados de forma idempotente, pero la interoperabilidad de esta cuenta, el identificador de transacción y la conciliación deben validarse con TUU. El checkout está desactivado por defecto; `TUU_CHECKOUT_ENABLED=1` permite iniciar pagos con la configuración seleccionada. Mantén `0` en producción hasta completar pruebas sandbox y validación del proveedor.
 
 ### 1. Crear y preparar MySQL externo
 
@@ -65,9 +65,9 @@ Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `public
 | `DB_SSL_CA_PEM` | Obligatoria cuando el proveedor requiere TLS. Contenido completo del certificado CA PEM, incluidas las líneas `BEGIN` y `END`; se crea un archivo temporal y se verifica el servidor. | Contenido de `ca.pem` |
 | `TUU_API_URL` | Endpoint sandbox; requiere la implementación TUU actualizada y verificada. | `https://frontend-api.payment.haulmer.dev/v1/payment` |
 | `TUU_ACCOUNT_ID` | Identificador de comercio entregado por TUU. | `62224230` |
-| `TUU_API_KEY` | Llave secreta TUU; no usar la de producción en pruebas. | `********` |
+| `TUU_SECRET_KEY` | Llave secreta TUU; no usar la de producción en pruebas. | `********` |
 | `TUU_CHECKOUT_ENABLED` | Mantener en `0` hasta validar pagos y webhook. | `0` |
-| `TUU_PAYMENT_HOSTS` | Hosts HTTPS de pago autorizados por TUU, separados por comas, sin esquema. | `host-confirmado-por-tuu.cl` |
+| `TUU_PAYMENT_HOSTS` | Allowlist opcional de hosts HTTPS de pago confirmados por TUU, separados por comas, sin esquema. | `host-confirmado-por-tuu.cl` |
 | `TUU_RETURN_URL`, `TUU_WEBHOOK_URL` | Variables antiguas, ya no utilizadas; ambas URLs se derivan de `APP_URL`. | No requieren configuración |
 | `TUU_WEBHOOK_SECRET` | Secreto para la implementación actual del webhook; su contrato debe corregirse antes de usarlo con TUU. | `********` |
 | `APP_URL` | Obligatoria. Origen HTTPS público, sin barra final. | `https://tu-app.onrender.com` |

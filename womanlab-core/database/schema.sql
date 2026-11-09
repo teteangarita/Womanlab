@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS ordenes (
   tuu_token VARCHAR(255) NULL,
   tuu_transaction_id VARCHAR(255) NULL,
   tuu_callback_signature CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  tuu_message VARCHAR(1000) NULL,
   dte_estado ENUM('PENDIENTE', 'EMITIENDO', 'EMITIDO', 'ERROR') NULL,
   dte_referencia VARCHAR(255) NULL,
   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

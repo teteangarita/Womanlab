@@ -8,7 +8,7 @@ use Throwable;
 
 final class TuuCallback
 {
-    public function __construct(private readonly PDO $db, private readonly bool $sandbox = false)
+    public function __construct(private readonly PDO $db)
     {
     }
 
@@ -51,10 +51,6 @@ final class TuuCallback
                 $this->db->commit();
                 return ['ok', 200];
             }
-            if ($fields['x_result'] === 'completed' && !$this->sandbox) {
-                $this->db->rollBack();
-                return ['callback_not_supported', 503];
-            }
             if ($fields['x_result'] === 'completed') {
                 $transactionId = $fields['x_transaction_id'] ?? null;
                 if ($transactionId !== null && (!is_string($transactionId) || $transactionId === '' || strlen($transactionId) > 255)) {
@@ -62,10 +58,6 @@ final class TuuCallback
                     return ['invalid_transaction', 422];
                 }
                 if ($order['estado'] === 'PAGADA') {
-                    if (!is_string($order['tuu_callback_signature']) || !hash_equals($order['tuu_callback_signature'], $fields['x_signature'])) {
-                        $this->db->rollBack();
-                        return ['order_state_conflict', 409];
-                    }
                     $this->db->commit();
                     return ['ok', 200];
                 }
@@ -90,7 +82,7 @@ final class TuuCallback
                         throw new \RuntimeException('Stock insuficiente para confirmar pago.');
                     }
                 }
-                $update = $this->db->prepare("UPDATE ordenes SET estado = 'PAGADA', tuu_transaction_id = ?, tuu_callback_signature = ? WHERE id = ? AND estado = 'PENDIENTE'");
+                $update = $this->db->prepare("UPDATE ordenes SET estado = 'PAGADA', tuu_transaction_id = ?, tuu_callback_signature = ?, tuu_message = NULL WHERE id = ? AND estado = 'PENDIENTE'");
                 $update->execute([$transactionId, $fields['x_signature'], $order['id']]);
                 if ($update->rowCount() !== 1) {
                     throw new \RuntimeException('No se pudo confirmar la orden.');
@@ -99,8 +91,9 @@ final class TuuCallback
                 return ['ok', 200];
             }
             if ($order['estado'] === 'PENDIENTE') {
-                $update = $this->db->prepare("UPDATE ordenes SET estado = 'RECHAZADA', tuu_callback_signature = ? WHERE id = ? AND estado = 'PENDIENTE'");
-                $update->execute([$fields['x_signature'], $order['id']]);
+                $message = substr((string) ($fields['x_message'] ?? ''), 0, 1000);
+                $update = $this->db->prepare("UPDATE ordenes SET estado = 'RECHAZADA', tuu_callback_signature = ?, tuu_message = ? WHERE id = ? AND estado = 'PENDIENTE'");
+                $update->execute([$fields['x_signature'], $message, $order['id']]);
                 if ($update->rowCount() !== 1) {
                     throw new \RuntimeException('No se pudo actualizar la orden.');
                 }

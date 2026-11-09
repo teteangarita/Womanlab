@@ -16,7 +16,7 @@ final class CurlTuuTransportTest extends TestCase
 
         try {
             try {
-                (new CurlTuuTransport($logPath))->post('https://127.0.0.1:1', 'secret-test-key', ['x_account_id' => 'account']);
+                (new CurlTuuTransport($logPath))->post('https://127.0.0.1:1', ['x_account_id' => 'account']);
                 self::fail('La solicitud debería fallar.');
             } catch (RuntimeException $error) {
                 self::assertSame('No se pudo completar la solicitud TUU.', $error->getMessage());

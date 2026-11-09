@@ -20,7 +20,7 @@ final class WebhookController
         if ($contentType !== 'application/x-www-form-urlencoded') {
             ApiResponse::fail('unsupported_media_type', 415);
         }
-        $secret = $_ENV['TUU_API_KEY'] ?? '';
+        $secret = $_ENV['TUU_SECRET_KEY'] ?? '';
         $account = $_ENV['TUU_ACCOUNT_ID'] ?? '';
         if ($secret === '' || $account === '') {
             ApiResponse::fail('webhook_not_configured', 503);
@@ -31,14 +31,15 @@ final class WebhookController
             ApiResponse::fail('invalid_form', 400);
         }
         if (!WebhookSignature::valid($fields, $secret)) {
-            ApiResponse::fail('invalid_signature', 401);
+            error_log('TUU callback rejected: invalid signature from ' . substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 64));
+            ApiResponse::fail('invalid_signature', 400);
         }
         $error = TuuCallback::validate($fields, $account);
         if ($error !== null) {
             ApiResponse::fail($error, 422);
         }
         try {
-            [$result, $status] = (new TuuCallback($db, CheckoutController::sandboxEnabled($_ENV)))->process($fields);
+            [$result, $status] = (new TuuCallback($db))->process($fields);
         } catch (Throwable $error) {
             error_log('TUU callback processing failed: ' . get_class($error));
             ApiResponse::fail('webhook_processing_failed', 500);

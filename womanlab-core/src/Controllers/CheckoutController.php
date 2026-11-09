@@ -13,18 +13,18 @@ use WomanLab\Support\Auth;
 
 final class CheckoutController
 {
-    public static function sandboxEnabled(array $env): bool
+    public static function checkoutEnabled(array $env): bool
     {
-        return ($env['APP_ENV'] ?? '') === 'sandbox'
-            && ($env['TUU_CHECKOUT_ENABLED'] ?? '') === '1'
-            && ($env['TUU_API_URL'] ?? '') === 'https://frontend-api.payment.haulmer.dev/v1/payment'
-            && ($env['TUU_ACCOUNT_ID'] ?? '') === '62224230';
+        return ($env['TUU_CHECKOUT_ENABLED'] ?? '') === '1'
+            && !empty($env['TUU_API_URL'])
+            && !empty($env['TUU_ACCOUNT_ID'])
+            && !empty($env['TUU_SECRET_KEY']);
     }
 
     public static function create(PDO $db): never
     {
         try {
-            if (!self::sandboxEnabled($_ENV)) {
+            if (!self::checkoutEnabled($_ENV)) {
                 ApiResponse::json(['error' => 'payment_not_available', 'message' => 'El pago en línea aún no está habilitado.'], 503);
             }
             $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
@@ -81,15 +81,19 @@ final class CheckoutController
             }
 
             ApiResponse::json([
+                'success' => true,
                 'codigo_orden' => $order['codigo_orden'],
-                'redirect_url' => $payment['url'],
+                'payment_url' => $payment['payment_url'],
             ], 201);
         } catch (Throwable $error) {
             error_log('Checkout failed: ' . $error->getMessage());
             if ($error instanceof CheckoutException) {
                 ApiResponse::json(['error' => $error->getMessage()], $error->httpStatus);
             }
-            ApiResponse::json(['error' => 'No se pudo iniciar el pago. Revisa el pedido o inténtalo más tarde.'], 503);
+            ApiResponse::json([
+                'error' => 'payment_provider_error',
+                'message' => 'No se pudo crear la sesión de pago. Revisa el registro privado del servidor o contacta a TUU.',
+            ], 503);
         }
     }
 }

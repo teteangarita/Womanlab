@@ -75,7 +75,7 @@ Revisa `git status` y el contenido de cada staging antes de confirmar. No subas 
 
 En cPanel crea primero la base y el usuario desde **MySQL Databases**. Selecciona la base prefijada en phpMyAdmin e importa los archivos completos `schema.sql` y luego `seeds.sql`. En una instalación anterior aplica solo `database/migrations/0002_admin_content.sql` y `database/cms-seeds.sql`; no vuelvas a importar `seeds.sql` para no restablecer precios del catálogo.
 
-En bases existentes sin la columna `tuu_callback_signature`, respalda y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql`. El esquema nuevo ya incluye esa columna. Solo las firmas de rechazos efectivamente procesados se reconocen como reintentos idénticos.
+En bases existentes sin la columna `tuu_callback_signature`, respalda y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql`. Para guardar mensajes de rechazo, aplica también una sola vez `database/migrations/0004_tuu_callback_message.sql` si falta `tuu_message`. El esquema nuevo incluye ambas columnas.
 
 Después de editar precios o textos desde el administrador, no vuelvas a aplicar los seeds: los seeds son solo para instalación inicial y pueden reponer los valores iniciales. La migración CMS es repetible; su seed usa `INSERT IGNORE` y no sobrescribe entradas ya editadas.
 
@@ -96,32 +96,32 @@ El usuario `admin@example.test` del seed tiene la contraseña temporal `AuditOnl
 }
 ```
 
-`id` corresponde al SKU publicado por `/api/products.php`. El servidor ignora cualquier precio adicional, bloquea filas de productos, comprueba órdenes pendientes que reservan stock, calcula total, guarda el precio histórico y crea una orden `PENDIENTE` antes de llamar a TUU. Responde `codigo_orden` y `redirect_url`. Las órdenes reservan stock por 30 minutos; configura el cron de vencimiento.
+`id` corresponde al SKU publicado por `/api/products.php`. El servidor ignora cualquier precio adicional, bloquea filas de productos, comprueba órdenes pendientes que reservan stock, calcula total, guarda el precio histórico y crea una orden `PENDIENTE` antes de llamar a TUU. Responde `success`, `codigo_orden` y `payment_url`. Las referencias usan `ORD-AAAAMMDD-XXXXXXXX`; las órdenes reservan stock por 30 minutos, así que configura el cron de vencimiento.
 
 ### Contrato TUU pendiente de confirmación
 
-El cliente de intento de pago usa el endpoint `TUU_API_URL`, el identificador `TUU_ACCOUNT_ID` y la llave `TUU_API_KEY` del entorno. Para sandbox, TUU documenta `https://frontend-api.payment.haulmer.dev/v1/payment`, cabecera `X-REDIRECT: false`, campos `x_*` y firma HMAC-SHA256 (`x_signature`). La respuesta se rechaza si el enlace no usa HTTPS o si el host no aparece en `TUU_PAYMENT_HOSTS`. La llave se usa para firmar y nunca se envía en el payload ni se guarda en Git.
+El cliente usa `TUU_API_URL`, `TUU_ACCOUNT_ID` y `TUU_SECRET_KEY`. La petición sandbox se envía como JSON con `Content-Type: application/json` y `X-REDIRECT: false`, incluye `x_signature` HMAC-SHA256 y no envía la llave en cabeceras ni en el cuerpo. El enlace devuelto debe usar HTTPS; si `TUU_PAYMENT_HOSTS` está configurado, también debe coincidir con uno de sus hosts. No guardes el `.env` ni llaves reales en Git; rota cualquier secreto que haya sido expuesto.
 
 Referencia oficial: [Iniciando una transacción](https://developers.tuu.cl/docs/payment-intent). La prueba del 6 de noviembre de 2026 con los datos públicos de integración llegó al sandbox, pero devolvió HTTP 302 a cancelación con `x_result=failed` y `x_message=Error validacion`. No se obtuvo una URL de sesión. Para investigar con soporte de TUU, solicita la causa de validación y un ejemplo vigente de solicitud y respuesta exitosa; no envíes secretos ni datos reales de clientes.
 
-**Checkout solo para sandbox aislado y deshabilitado por defecto:** `TUU_CHECKOUT_ENABLED=0`. Para pruebas, el código exige además `APP_ENV=sandbox`, endpoint y cuenta públicos de sandbox. El proveedor rechazó los intentos con `Error validacion`; falta confirmar los requisitos y la respuesta exitosa. El callback verifica el formulario y confirma pagos y stock únicamente en sandbox. Falta confirmar el ID de transacción y validar el flujo real, concurrencia y DTE. No está listo para producción.
+**Checkout deshabilitado por defecto:** `TUU_CHECKOUT_ENABLED=0`. Para habilitarlo, establece `1` solo con endpoint, cuenta y llave correctos. El callback valida firma, cuenta, referencia, monto y moneda, y confirma un pago aprobado dentro de una transacción con descuento de stock idempotente. El GET de éxito/cancelación solo informa al cliente; nunca confirma el pago. Antes de producción, valida con TUU el contrato de la cuenta, reintentos, identificador de transacción, concurrencia, conciliación y DTE. Los intentos previos de sandbox respondieron HTTP 302 con error de validación; consulta la causa con TUU antes de probar de nuevo.
 
 Haulmer debe confirmar por escrito, usando la documentación vigente de la cuenta, el esquema exacto de solicitud/respuesta, nombres de campos de retorno, si la API requiere otro host/endpoint y la semántica del token. No actives producción hasta adaptar el cliente si el contrato real difiere.
 
-`POST /api/webhook_tuu.php` acepta `application/x-www-form-urlencoded` con `x_signature` HMAC-SHA256 sobre los campos `x_` ordenados, usando `TUU_API_KEY` como llave secreta. Valida cuenta, referencia, monto y moneda y procesa `failed` de manera idempotente. Confirma la llave con TUU. No acepta el contrato JSON anterior. La confirmación por el navegador nunca marca una orden como pagada.
+`POST /api/webhook_tuu.php` acepta `application/x-www-form-urlencoded` con `x_signature` HMAC-SHA256 sobre los campos `x_` ordenados, usando `TUU_SECRET_KEY`. Rechaza firmas inválidas con HTTP 400. Valida cuenta, referencia, monto y moneda; procesa `completed`, `failed` y `pending` de forma idempotente y devuelve HTTP 200 al procesar un evento válido. Los errores transitorios de base devuelven 5xx para permitir reintentos. La confirmación por el navegador nunca marca una orden como pagada.
 
 **Confirma con Haulmer** el ID de transacción, los estados reales, la llave de firma y ejemplos de callbacks y reintentos de la cuenta. No aceptes pagos reales hasta completar y probar el flujo y la conciliación de extremo a extremo.
 
-El callback no confirma pagos ni emite documentos. `TUU_DTE_URL` queda desactivado si no se configura. La ruta y payload de Autoservicio DTE deben adaptarse a las credenciales, tipo de documento tributario, campos de emisor/receptor y respuesta entregados por Haulmer; no se emite un documento real con el contrato genérico incluido.
+El callback firmado sí actualiza el estado del pago y el stock; no emite documentos tributarios. `TUU_DTE_URL` queda desactivado si no se configura. La ruta y payload de Autoservicio DTE deben adaptarse a las credenciales, tipo de documento tributario, campos de emisor/receptor y respuesta entregados por Haulmer; no se emite un documento real con el contrato genérico incluido.
 
 En el portal TUU:
 
 1. Solicita acceso de comercio a Pago Online y a Autoservicio DTE, API key de pruebas y producción, secreto de firma del webhook y endpoints oficiales para cada ambiente.
-2. El retorno se construye desde `APP_URL` como `https://TU-DOMINIO/pago/retorno.php?orden=CODIGO`; este redirige a la página de resultado existente.
+2. El retorno de éxito usa `/pago/exito.php?ref=CODIGO` y cancelación `/pago/cancelado.php?ref=CODIGO`; la página de éxito consulta el estado de la orden, que solo se cambia desde el callback firmado.
 3. Registra como webhook `https://TU-DOMINIO/api/webhook_tuu.php`, configura la firma/secret y pide ejemplos firmados de pago exitoso, rechazo y reintento.
 4. Solicita el host exacto de checkout, agrégalo a `TUU_PAYMENT_HOSTS` sin esquema y valida certificados TLS.
 5. Habilita DTE, solicita URL/credenciales y valida boleta/factura y folio en ambiente de certificación antes de activarlo.
-6. Después de implementar el flujo de pago completado, ejecuta las pruebas completas de sandbox y solicita revisión del proveedor antes de considerar producción.
+6. Ejecuta las pruebas completas de sandbox y solicita revisión del proveedor antes de habilitar pagos reales; mantén `TUU_CHECKOUT_ENABLED=0` hasta completar esa validación.
 
 ## Usuarios y administración
 
@@ -164,12 +164,12 @@ El dominio debe tener como raíz web `/home/CPANEL_USER/public_html`. Instala el
   APP_URL=https://tudominio.cl
   TUU_API_URL=https://frontend-api.payment.haulmer.dev/v1/payment
   TUU_ACCOUNT_ID=62224230
-  TUU_API_KEY=REEMPLAZAR_POR_LLAVE_SECRETA_DE_SANDBOX
+  TUU_SECRET_KEY=REEMPLAZAR_POR_LLAVE_SECRETA_ROTADA
   TUU_CHECKOUT_ENABLED=0
   TUU_PAYMENT_HOSTS=HOST_DE_PAGO_CONFIRMADO_POR_TUU
   ```
 
-  Escribe las URLs como texto plano, sin corchetes de Markdown ni barra final en `APP_URL`. El ID indicado y la llave publicada por TUU son solo para integración; solicita credenciales independientes para producción y no las mezcles entre ambientes. `TUU_PAYMENT_HOSTS` contiene hosts autorizados sin esquema, separados por comas. `TUU_API_KEY` se usa para la firma del callback; confirma con TUU que sea la llave secreta correcta.
+  Escribe las URLs como texto plano, sin corchetes de Markdown ni barra final en `APP_URL`. Usa credenciales sandbox para pruebas y credenciales independientes para producción. `TUU_PAYMENT_HOSTS` es opcional; si se configura, contiene hosts autorizados sin esquema, separados por comas. `TUU_SECRET_KEY` firma la solicitud y el callback; nunca la incluyas en Git.
 3. En **SSL/TLS Status**, activa AutoSSL y verifica que el certificado cubra el dominio de `APP_URL`. Comprueba que `/pago/retorno.php` y `/api/webhook_tuu.php` se resuelvan directamente por HTTPS, sin prefijos locales como `/public_html`. TUU recibe estas URLs derivadas de `APP_URL` en `x_url_complete`, `x_url_cancel` y `x_url_callback` de cada solicitud. La URL de retorno solo informa al cliente y nunca confirma una orden.
 4. Comprueba que ninguna copia del `.env` esté expuesta. Por ejemplo, `curl -i https://tudominio.cl/.env` y `curl -i https://tudominio.cl/womanlab-core/.env` deben devolver `403` o `404`, nunca el contenido del archivo. Si devuelven una redirección, inspecciona el destino final y corrige la configuración antes de publicar. Una respuesta 404 no sustituye revisar físicamente el DocumentRoot y las copias del archivo.
 5. El endpoint `/api/webhook_tuu.php` valida el callback firmado; confirma `completed` solo en sandbox aislado y deja `pending` sin cambios. Solicita a TUU un ejemplo real firmado y confirma ID, llave, estados y reintentos. La prueba completa debe incluir firma inválida, monto/cuenta/moneda incorrectos, duplicados, pago rechazado y pago aprobado, sin confiar en el retorno del navegador. Producción sigue bloqueada.
@@ -181,7 +181,7 @@ Los datos de sandbox publicados por TUU no son secretos de producción. Si algun
 3. Crea la base MariaDB y usuario con permisos mínimos necesarios. Importa el esquema y el seed de pruebas en una base aislada; no uses el usuario seed en producción.
 4. Copia el contenido de `public_html/` a `public_html/`, conservando `.htaccess`. Copia `womanlab-core/` a `/home/USUARIO/womanlab-core/` y `composer.json` a `/home/USUARIO/composer.json`.
 5. Desde Terminal de cPanel ejecuta `cd /home/USUARIO && composer install --no-dev --classmap-authoritative`. El autoloader quedará fuera de `public_html`.
-6. Copia `womanlab-core/.env.example` a `womanlab-core/.env`; completa DB, `APP_URL`, `TUU_API_KEY`, URL/host de checkout, retorno, webhook, secreto de firma, email remitente y directorio absoluto de uploads. Protege `.env` con permisos `600`; no lo cargues por HTTP.
+6. Copia `womanlab-core/.env.example` a `womanlab-core/.env`; completa DB, `APP_URL`, `TUU_SECRET_KEY`, URL/host de checkout, email remitente y directorio absoluto de uploads. Protege `.env` con permisos `600`; no lo cargues por HTTP. `TUU_CHECKOUT_ENABLED` se mantiene en `0` hasta validar sandbox.
 7. Configura `PUBLIC_UPLOAD_DIR=/home/USUARIO/public_html/uploads/images`, crea el directorio con permisos `750` y deja `.htaccess` que impide ejecutar scripts en uploads.
 8. Revisa `.htaccess` y TLS de AutoSSL. Si el proxy TLS de cPanel no expone `HTTPS=on`, ajusta la regla de redirección con soporte de hosting para evitar bucles. La CSP conserva el GTM y Font Awesome que ya usa el sitio y admite estilos inline existentes; endurecerla requiere retirar esos inline.
 9. En el portal de TUU registra las URLs y secretos del apartado anterior. Usa credenciales sandbox y host allowlist de pruebas.

@@ -634,11 +634,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const result = await response.json();
 
-      if (!response.ok || !result.redirect_url) {
+      if (!response.ok || !result.payment_url) {
         throw new Error(result.message || result.error || 'No se pudo iniciar el pago. Inténtalo nuevamente.');
       }
 
-      const paymentUrl = new URL(result.redirect_url);
+      const paymentUrl = new URL(result.payment_url);
       if (paymentUrl.protocol !== 'https:') {
         throw new Error('El proveedor devolvió un enlace de pago no seguro.');
       }

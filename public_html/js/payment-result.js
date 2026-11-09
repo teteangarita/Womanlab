@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const title = document.getElementById('paymentTitle');
   const message = document.getElementById('paymentMessage');
   const details = document.getElementById('paymentDetails');
-  if (!orderCode || !/^[a-f0-9-]{36}$/i.test(orderCode)) {
+  if (!orderCode || !/^ORD-[0-9]{8}-[A-F0-9]{8}$/.test(orderCode)) {
     title.textContent = 'No encontramos el pedido';
     message.textContent = 'Revisa el enlace de retorno o contacta a Woman Lab.';
     return;

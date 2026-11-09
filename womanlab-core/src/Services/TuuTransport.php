@@ -5,5 +5,5 @@ namespace WomanLab\Services;
 
 interface TuuTransport
 {
-    public function post(string $url, string $apiKey, array $payload): array;
+    public function post(string $url, array $payload, ?string $apiKey = null): array;
 }
