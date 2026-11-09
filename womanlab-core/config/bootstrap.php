@@ -4,6 +4,13 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 use WomanLab\Support\Database;
 
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+$logDirectory = dirname(__DIR__) . '/logs';
+if ((is_dir($logDirectory) || @mkdir($logDirectory, 0750, true)) && is_writable($logDirectory)) {
+    ini_set('error_log', $logDirectory . '/php_errors.log');
+}
+
 $projectRoot = dirname(__DIR__, 2);
 require_once $projectRoot . '/vendor/autoload.php';
 
@@ -34,12 +41,6 @@ $env = static function (string $key, string $default = ''): string {
     return is_string($value) && ($value !== '' || in_array($key, ['DB_PASSWORD', 'DB_PASS'], true)) ? $value : $default;
 };
 
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
-$logDirectory = dirname(__DIR__) . '/logs';
-if (is_dir($logDirectory) && is_writable($logDirectory)) {
-    ini_set('error_log', $logDirectory . '/php_errors.log');
-}
 date_default_timezone_set($env('APP_TIMEZONE', 'America/Santiago'));
 
 if (session_status() !== PHP_SESSION_ACTIVE) {

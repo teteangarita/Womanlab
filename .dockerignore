@@ -1,9 +1,9 @@
 .git
 .vscode
-cpanel/vendor
-cpanel/womanlab-core/.env
-cpanel/womanlab-core/.env.*
-!cpanel/womanlab-core/.env.example
-cpanel/womanlab-core/logs
-cpanel/public_html/uploads/images/*
-!cpanel/public_html/uploads/images/.htaccess
+vendor
+womanlab-core/.env
+womanlab-core/.env.*
+!womanlab-core/.env.example
+womanlab-core/logs
+public_html/uploads/images/*
+!public_html/uploads/images/.htaccess

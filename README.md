@@ -1,16 +1,20 @@
 
-http://localhost:3390/cpanel/public_html/admin/login.php
+http://localhost:3390/admin/login.php
 
 Usuario de prueba: admin@example.test
 Contraseña temporal: AuditOnly-2026-Test!
 
 
 
-php -S localhost:3390
+php -S localhost:3390 -t public_html
+
+## Subdominio shop.womanlab.cl
+
+La versión PHP conectada a MariaDB está en `public_html/`; ejecuta `php -S localhost:3390 -t public_html` para abrirla en local. En cPanel, configura el DocumentRoot de `shop.womanlab.cl` como la carpeta pública de ese subdominio, nunca como la raíz del repositorio. Mantén `womanlab-core/`, `vendor/` y `.env` fuera de todas las raíces web. Consulta la guía `cpanel/DESPLIEGUE_FINAL.md` para las rutas, la conexión y los logs privados.
 
 ## Guía de Despliegue en Render.com
 
-Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel/public_html` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
+Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `public_html` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
 
 **Pagos aún no aptos para producción:** el webhook verifica el formulario firmado, pero la interoperabilidad y el identificador de transacción todavía no se han validado con TUU. El checkout solo puede activarse para sandbox aislado con la configuración explícita indicada en `cpanel/DESPLIEGUE_FINAL.md`. El contenedor además bloquea `/api/checkout.php` mientras `TUU_CHECKOUT_ENABLED=0`.
 
@@ -23,8 +27,8 @@ Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel
 	```bash
 	export DB_HOST='mysql-xxxx.aivencloud.com' DB_PORT='12345' DB_NAME='womanlab' DB_USER='avnadmin'
 	export DB_CA='/ruta/al/ca.pem'
-	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < cpanel/womanlab-core/database/schema.sql
-	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < cpanel/womanlab-core/database/seeds.sql
+	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < womanlab-core/database/schema.sql
+	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < womanlab-core/database/seeds.sql
 	```
 
 	El cliente solicita la contraseña en cada comando. Para DBeaver, configura una conexión MySQL con host, puerto y base del proveedor, activa TLS con verificación de CA y nombre de host, abre cada archivo SQL y ejecuta primero el esquema y luego los seeds completos. Estas instrucciones son solo para instalaciones nuevas: no reapliques los seeds a una base con datos, ya que restablecen precios y la cuenta de prueba.
@@ -85,5 +89,5 @@ El webhook PHP valida los campos de formulario `x_*` y la firma `x_signature`. L
 - Un servicio Free se suspende tras 15 minutos sin tráfico entrante y el siguiente acceso puede tardar en arrancar. Consulta los límites y precios actuales de Render antes de elegir el plan.
 - El sistema de archivos es efímero: las imágenes subidas se pierden al reiniciar o redesplegar. Para conservarlas, integra almacenamiento externo de objetos; un disco persistente requiere un plan compatible. Haz respaldos externos de la base.
 - Las sesiones PHP locales también son efímeras. Para una operación con varias instancias o sesiones persistentes, usa un almacén compartido.
-- Configura externamente las tareas periódicas `cpanel/womanlab-core/bin/expire-orders.php` y `retry-dte.php` con acceso al mismo entorno y base; el Web Service no ejecuta cron automáticamente. La emisión DTE requiere configuración y validación adicional.
+- Configura externamente las tareas periódicas `womanlab-core/bin/expire-orders.php` y `retry-dte.php` con acceso al mismo entorno y base; el Web Service no ejecuta cron automáticamente. La emisión DTE requiere configuración y validación adicional.
 - La aplicación usa `mail()`; configura un proveedor de correo apropiado antes de depender de la verificación de email. Consulta detalles de la aplicación y sus pruebas en `cpanel/README.md`.

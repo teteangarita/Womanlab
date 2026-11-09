@@ -1,11 +1,13 @@
 # Migración Woman Lab a PHP, MariaDB y TUU
 
+La aplicación PHP está ahora en `public_html/` y `womanlab-core/` en la raíz del repositorio; Composer y sus pruebas también se ejecutan desde la raíz. Para el subdominio `shop.womanlab.cl`, sigue la guía `cpanel/DESPLIEGUE_FINAL.md` y configura su DocumentRoot como la carpeta pública del subdominio, no como la raíz del repositorio.
+
 ## Alcance y estructura
 
 La migración se entrega como paquete paralelo para cPanel. La raíz original del repositorio y su diseño no se reemplazan. `public_html` contiene una copia de despliegue del HTML/CSS/assets y usa PHP para catálogo, checkout, autenticación, pagos y administración. El núcleo queda fuera del directorio web.
 
 ```text
-cpanel/
+repositorio/
 ├── composer.json
 ├── phpunit.xml
 ├── public_html/                 # Copiar su contenido a public_html del hosting
@@ -45,13 +47,13 @@ git switch -c feature/migration-php-tuu
 No se deben llevar estos cambios a `main` hasta completar pruebas y revisión. Commits atómicos sugeridos:
 
 ```bash
-git add cpanel/womanlab-core/database
+git add womanlab-core/database
 git commit -m "feat(db): agrega esquema y catálogo inicial MariaDB"
-git add cpanel/womanlab-core/src cpanel/public_html/api
+git add womanlab-core/src public_html/api
 git commit -m "feat(api): agrega checkout, autenticación y webhook TUU"
-git add cpanel/public_html/index.html cpanel/public_html/css cpanel/public_html/js cpanel/public_html/admin cpanel/public_html/pago
+git add public_html/index.html public_html/css public_html/js public_html/admin public_html/pago
 git commit -m "feat(storefront): conecta catálogo y checkout PHP"
-git add cpanel/womanlab-core/tests cpanel/README.md cpanel/composer.json cpanel/phpunit.xml
+git add womanlab-core/tests cpanel/README.md composer.json phpunit.xml
 git commit -m "test(docs): agrega pruebas y guía de despliegue cPanel"
 ```
 
@@ -134,11 +136,11 @@ En una base que ya tenía el esquema anterior, aplica `womanlab-core/database/mi
 Completa `womanlab-core/.env` con `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `APP_URL` para MariaDB local. Desde la raíz del repositorio, el modo recomendado usa el mismo docroot que cPanel:
 
 ```bash
-cd cpanel/public_html
+cd public_html
 php -S localhost:3390
 ```
 
-En ese modo abre `http://localhost:3390/admin/login.php`. También se admite iniciar PHP desde la raíz del repositorio con `php -S localhost:3390`; entonces la ruta es `http://localhost:3390/cpanel/public_html/admin/login.php`. El panel detecta ese prefijo local. El formulario envía credenciales por `POST`, nunca en parámetros de URL.
+En ese modo abre `http://localhost:3390/admin/login.php`. También se admite iniciar PHP desde la raíz del repositorio con `php -S localhost:3390`; entonces la ruta es `http://localhost:3390/public_html/admin/login.php`. El panel detecta ese prefijo local. El formulario envía credenciales por `POST`, nunca en parámetros de URL.
 
 ## Configuración en cPanelHost
 
@@ -146,7 +148,7 @@ En ese modo abre `http://localhost:3390/admin/login.php`. También se admite ini
 
 El dominio debe tener como raíz web `/home/CPANEL_USER/public_html`. Instala el núcleo en `/home/CPANEL_USER/womanlab-core`, nunca dentro de `public_html`. Las entradas PHP buscan ese directorio como hermano de `public_html`; `WOMANLAB_CORE_PATH` solo es necesario si el proveedor usa otra ubicación. El bootstrap carga `/home/CPANEL_USER/vendor/autoload.php` y el `.env` situado en la raíz del núcleo. Comprueba en cPanel la raíz efectiva del dominio, especialmente si es un dominio adicional o subdominio: no basta con que el nombre de la carpeta sea `public_html`.
 
-1. Copia el contenido de `cpanel/public_html/`, incluidos sus archivos `.htaccess`, a la raíz web. Copia `cpanel/womanlab-core/` a `/home/CPANEL_USER/womanlab-core/`, sin copiar un `.env` de desarrollo, y `cpanel/composer.json` y `cpanel/composer.lock` a `/home/CPANEL_USER/`. No copies `womanlab-core`, `vendor` ni archivos de configuración privados a la raíz web.
+1. Copia el contenido de `public_html/`, incluidos sus archivos `.htaccess`, a la raíz web. Copia `womanlab-core/` a `/home/CPANEL_USER/womanlab-core/`, sin copiar un `.env` de desarrollo, y `composer.json` y `composer.lock` a `/home/CPANEL_USER/`. No copies `womanlab-core`, `vendor` ni archivos de configuración privados a la raíz web.
 2. Desde SSH o Terminal de cPanel, instala las dependencias fuera de la raíz web y crea la configuración privada, sustituyendo `CPANEL_USER` por el usuario real:
 
   ```bash
@@ -168,7 +170,7 @@ El dominio debe tener como raíz web `/home/CPANEL_USER/public_html`. Instala el
   ```
 
   Escribe las URLs como texto plano, sin corchetes de Markdown ni barra final en `APP_URL`. El ID indicado y la llave publicada por TUU son solo para integración; solicita credenciales independientes para producción y no las mezcles entre ambientes. `TUU_PAYMENT_HOSTS` contiene hosts autorizados sin esquema, separados por comas. `TUU_API_KEY` se usa para la firma del callback; confirma con TUU que sea la llave secreta correcta.
-3. En **SSL/TLS Status**, activa AutoSSL y verifica que el certificado cubra el dominio de `APP_URL`. Comprueba que `/pago/retorno.php` y `/api/webhook_tuu.php` se resuelvan directamente por HTTPS, sin prefijos locales como `/cpanel/public_html`. TUU recibe estas URLs derivadas de `APP_URL` en `x_url_complete`, `x_url_cancel` y `x_url_callback` de cada solicitud. La URL de retorno solo informa al cliente y nunca confirma una orden.
+3. En **SSL/TLS Status**, activa AutoSSL y verifica que el certificado cubra el dominio de `APP_URL`. Comprueba que `/pago/retorno.php` y `/api/webhook_tuu.php` se resuelvan directamente por HTTPS, sin prefijos locales como `/public_html`. TUU recibe estas URLs derivadas de `APP_URL` en `x_url_complete`, `x_url_cancel` y `x_url_callback` de cada solicitud. La URL de retorno solo informa al cliente y nunca confirma una orden.
 4. Comprueba que ninguna copia del `.env` esté expuesta. Por ejemplo, `curl -i https://tudominio.cl/.env` y `curl -i https://tudominio.cl/womanlab-core/.env` deben devolver `403` o `404`, nunca el contenido del archivo. Si devuelven una redirección, inspecciona el destino final y corrige la configuración antes de publicar. Una respuesta 404 no sustituye revisar físicamente el DocumentRoot y las copias del archivo.
 5. El endpoint `/api/webhook_tuu.php` valida el callback firmado; confirma `completed` solo en sandbox aislado y deja `pending` sin cambios. Solicita a TUU un ejemplo real firmado y confirma ID, llave, estados y reintentos. La prueba completa debe incluir firma inválida, monto/cuenta/moneda incorrectos, duplicados, pago rechazado y pago aprobado, sin confiar en el retorno del navegador. Producción sigue bloqueada.
 
@@ -177,7 +179,7 @@ Los datos de sandbox publicados por TUU no son secretos de producción. Si algun
 1. En Git, confirma que estás en `feature/migration-php-tuu`; no despliegues desde `main` durante validación.
 2. En **MultiPHP Manager**, selecciona PHP 8.2 o superior y habilita `PDO`, `pdo_mysql`, `curl`, `fileinfo`, `mbstring`, `JSON` y `OpenSSL`.
 3. Crea la base MariaDB y usuario con permisos mínimos necesarios. Importa el esquema y el seed de pruebas en una base aislada; no uses el usuario seed en producción.
-4. Copia el contenido de `cpanel/public_html/` a `public_html/`, conservando `.htaccess`. Copia `cpanel/womanlab-core/` a `/home/USUARIO/womanlab-core/` y `cpanel/composer.json` a `/home/USUARIO/composer.json`.
+4. Copia el contenido de `public_html/` a `public_html/`, conservando `.htaccess`. Copia `womanlab-core/` a `/home/USUARIO/womanlab-core/` y `composer.json` a `/home/USUARIO/composer.json`.
 5. Desde Terminal de cPanel ejecuta `cd /home/USUARIO && composer install --no-dev --classmap-authoritative`. El autoloader quedará fuera de `public_html`.
 6. Copia `womanlab-core/.env.example` a `womanlab-core/.env`; completa DB, `APP_URL`, `TUU_API_KEY`, URL/host de checkout, retorno, webhook, secreto de firma, email remitente y directorio absoluto de uploads. Protege `.env` con permisos `600`; no lo cargues por HTTP.
 7. Configura `PUBLIC_UPLOAD_DIR=/home/USUARIO/public_html/uploads/images`, crea el directorio con permisos `750` y deja `.htaccess` que impide ejecutar scripts en uploads.
@@ -192,7 +194,6 @@ Los datos de sandbox publicados por TUU no son secretos de producción. Si algun
 Desde la carpeta del paquete:
 
 ```bash
-cd cpanel
 composer install
 composer test
 ```

@@ -14,7 +14,7 @@ foreach (['pdo_mysql', 'curl', 'mbstring', 'fileinfo', 'openssl'] as $extension)
     $failed = $failed || !$enabled;
 }
 
-$corePath = getenv('WOMANLAB_CORE_PATH') ?: dirname(__DIR__, 2) . '/womanlab-core';
+$corePath = require __DIR__ . '/_core_path.php';
 try {
     if (!is_file($corePath . '/config/bootstrap.php')) {
         throw new RuntimeException('Núcleo no encontrado; verifica WOMANLAB_CORE_PATH.');

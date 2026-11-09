@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-$corePath = getenv('WOMANLAB_CORE_PATH') ?: dirname(__DIR__, 2) . '/womanlab-core';
+$corePath = require dirname(__DIR__) . '/api/_core_path.php';
 require_once $corePath . '/config/bootstrap.php';
 $basePath = womanlab_base_path();
 $user = WomanLab\Support\Auth::user();

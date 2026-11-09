@@ -4,4 +4,6 @@
 .env.*
 .wrangler/
 node_modules/
-cpanel/womanlab-core/logs/
+womanlab-core/logs/
+/vendor/
+/.phpunit.cache/

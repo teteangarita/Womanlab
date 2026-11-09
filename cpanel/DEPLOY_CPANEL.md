@@ -29,7 +29,7 @@ Confirma el DocumentRoot en cPanel. Para un dominio principal con raíz `/home/C
     uploads/.htaccess
 ```
 
-Copia el contenido de `cpanel/public_html/` a la raíz del dominio, incluidos los tres `.htaccess`. Copia `cpanel/womanlab-core/` como hermano de `public_html`, sin el `.env` local, y `cpanel/composer.json` y `cpanel/composer.lock` al directorio padre del núcleo. Nunca publiques `vendor`, el núcleo, logs o `.env`, tampoco bajo otro DocumentRoot. Si el DocumentRoot difiere, configura `WOMANLAB_CORE_PATH` en PHP con la ruta absoluta del núcleo; Composer debe estar en su directorio padre.
+Copia el contenido de `public_html/` a la raíz del dominio, incluidos los tres `.htaccess`. Copia `womanlab-core/` como hermano de `public_html`, sin el `.env` local, y `composer.json` y `composer.lock` al directorio padre del núcleo. Nunca publiques `vendor`, el núcleo, logs o `.env`, tampoco bajo otro DocumentRoot. Si el DocumentRoot difiere, configura `WOMANLAB_CORE_PATH` en PHP con la ruta absoluta del núcleo; Composer debe estar en su directorio padre.
 
 Selecciona PHP 8.2 o superior y habilita `pdo_mysql`, `curl`, `mbstring`, `fileinfo`, `openssl` y JSON. En SSH o Terminal de cPanel:
 

@@ -6,7 +6,7 @@ Esta guía prepara el hosting y la base de datos, pero **el checkout no está li
 
 ## 1. Subida de archivos
 
-Confirma en cPanel > **Dominios** la raíz del dominio. Para el dominio principal con `/home/USUARIO/public_html`, la estructura es:
+En cPanel > **Dominios**, comprueba el DocumentRoot asignado a `shop.womanlab.cl`. El siguiente ejemplo supone `/home/USUARIO/public_html/shop`; si cPanel muestra otra ruta, usa esa ruta exacta en los comandos. No configures la raíz del repositorio como DocumentRoot: expone archivos privados.
 
 ```text
 /home/USUARIO/composer.json
@@ -15,24 +15,24 @@ Confirma en cPanel > **Dominios** la raíz del dominio. Para el dominio principa
 /home/USUARIO/womanlab-core/.env
 /home/USUARIO/womanlab-core/config/
 /home/USUARIO/womanlab-core/src/
-/home/USUARIO/public_html/index.html
-/home/USUARIO/public_html/.htaccess
-/home/USUARIO/public_html/api/
-/home/USUARIO/public_html/uploads/
+/home/USUARIO/public_html/shop/index.html
+/home/USUARIO/public_html/shop/.htaccess
+/home/USUARIO/public_html/shop/api/
+/home/USUARIO/public_html/shop/uploads/
 ```
 
 Desde la raíz del proyecto local, con SSH habilitado y sustituyendo los datos reales del proveedor:
 
 ```bash
-rsync -av --exclude='.env' --exclude='logs/' --exclude='tests/' cpanel/womanlab-core/ USUARIO@SERVIDOR:/home/USUARIO/womanlab-core/
-rsync -av --exclude='uploads/images/' cpanel/public_html/ USUARIO@SERVIDOR:/home/USUARIO/public_html/
-scp cpanel/composer.json cpanel/composer.lock USUARIO@SERVIDOR:/home/USUARIO/
+rsync -av --exclude='.env' --exclude='logs/' --exclude='tests/' womanlab-core/ USUARIO@SERVIDOR:/home/USUARIO/womanlab-core/
+rsync -av --exclude='uploads/images/' public_html/ USUARIO@SERVIDOR:/home/USUARIO/public_html/shop/
+scp composer.json composer.lock USUARIO@SERVIDOR:/home/USUARIO/
 ssh USUARIO@SERVIDOR
 cd /home/USUARIO
 composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative
 cp -n womanlab-core/.env.example womanlab-core/.env
 chmod 600 womanlab-core/.env
-mkdir -p womanlab-core/logs public_html/uploads/images
+mkdir -p womanlab-core/logs public_html/shop/uploads/images
 chmod 700 womanlab-core/logs
 ```
 
@@ -52,12 +52,12 @@ Edita `/home/USUARIO/womanlab-core/.env` con tus valores reales, sin corchetes. 
 
 ```dotenv
 APP_ENV=production
-APP_URL=https://tudominio.cl
+APP_URL=https://shop.womanlab.cl
 APP_TIMEZONE=America/Santiago
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=usuario_womanlab
-DB_USER=usuario_wlab
+DB_NAME=cwo120169_Womanlab
+DB_USER=daysimontoya
 DB_PASS=REEMPLAZAR_CON_PASSWORD_PRIVADA
 TUU_API_URL=https://frontend-api.payment.haulmer.dev/v1/payment
 TUU_ACCOUNT_ID=62224230
@@ -66,7 +66,7 @@ TUU_CHECKOUT_ENABLED=0
 TUU_PAYMENT_HOSTS=HOST_DE_CHECKOUT_CONFIRMADO_POR_TUU
 TUU_DTE_URL=
 MAIL_FROM=ventas@tudominio.cl
-PUBLIC_UPLOAD_DIR=/home/USUARIO/public_html/uploads/images
+PUBLIC_UPLOAD_DIR=/home/USUARIO/public_html/shop/uploads/images
 ```
 
 El bootstrap carga el `.env` privado con Composer. `DB_PASS` y `DB_PASSWORD` son compatibles; utiliza solo uno. Una variable del sistema tiene prioridad sobre el archivo. `APP_URL` debe ser un origen HTTPS sin ruta: el cliente genera automáticamente la URL de retorno y `/api/webhook_tuu.php`. Si hay un `.env` anterior, `cp -n` no lo reemplaza: elimina o actualiza cualquier `DB_PASSWORD` antiguo al usar `DB_PASS`. Mantén las contraseñas y llaves fuera de Git.
@@ -79,12 +79,12 @@ En Terminal o SSH ejecuta:
 
 ```bash
 cd /home/USUARIO
-php public_html/api/diagnostico.php
+php public_html/shop/api/diagnostico.php
 ```
 
-El script verifica extensiones, conexión, lectura de `productos` y `usuarios`, y HTTPS saliente hacia TUU. Un HTTP 404 del host base puede indicar conectividad TLS correcta, pero no valida el pago. Los errores describen categorías sin mostrar contraseñas. El script solo funciona por CLI y devuelve 404 por web; Apache también bloquea su acceso. Revisa logs privados en `womanlab-core/logs/` y solicita al proveedor ayuda con host, puerto, usuario o privilegios si la conexión falla.
+El script verifica extensiones, conexión, lectura de `productos` y `usuarios`, y HTTPS saliente hacia TUU. Un HTTP 404 del host base puede indicar conectividad TLS correcta, pero no valida el pago. Los errores describen categorías sin mostrar contraseñas. El script solo funciona por CLI y devuelve 404 por web; Apache también bloquea su acceso. Los errores PHP y de conexión se registran en `/home/USUARIO/womanlab-core/logs/php_errors.log`; los fallos de TUU, en `tuu_errors.log`. Por SSH puedes revisarlos con `tail -n 100 /home/USUARIO/womanlab-core/logs/php_errors.log`. Si PHP no puede escribir en esa carpeta, usa el registro del servidor: consulta su ubicación al hosting. No expongas ni compartas los logs; configura su rotación.
 
-En **SSL/TLS Status**, activa AutoSSL y verifica el certificado del dominio. Comprueba `https://tudominio.cl/api/webhook_tuu.php` directamente por HTTPS; la redirección HTTP 308 preserva POST. No expongas `.env`, `vendor`, logs, el núcleo o backups bajo ningún DocumentRoot. Si el hosting termina TLS en un proxy, solicita configuración de proxies confiables al proveedor para evitar bucles. El servidor PHP incorporado no aplica `.htaccess`.
+En **SSL/TLS Status**, activa AutoSSL y verifica el certificado de `shop.womanlab.cl`. Abre `https://shop.womanlab.cl/` y verifica `https://shop.womanlab.cl/api/products.php`: debe devolver JSON, no el HTML de la tienda estática. La ruta `https://shop.womanlab.cl/api/webhook_tuu.php` debe recibir POST directamente por HTTPS; la redirección HTTP 308 preserva POST. No expongas `.env`, `vendor`, logs, el núcleo o backups bajo ningún DocumentRoot. Si el hosting termina TLS en un proxy, solicita configuración de proxies confiables al proveedor para evitar bucles. El servidor PHP incorporado no aplica `.htaccess`.
 
 ## 5. Primera prueba sandbox
 

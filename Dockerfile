@@ -9,9 +9,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
-COPY cpanel/composer.json cpanel/composer.lock /var/www/
-COPY cpanel/womanlab-core /var/www/womanlab-core
-COPY cpanel/public_html /var/www/html
+COPY composer.json composer.lock /var/www/
+COPY womanlab-core /var/www/womanlab-core
+COPY public_html /var/www/html
 COPY docker/render.conf /etc/apache2/conf-available/womanlab-render.conf
 COPY docker/entrypoint.sh /usr/local/bin/womanlab-entrypoint
 
