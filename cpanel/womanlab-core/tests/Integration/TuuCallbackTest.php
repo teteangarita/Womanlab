@@ -63,7 +63,7 @@ final class TuuCallbackTest extends TestCase
     {
         $callback = new TuuCallback($this->db);
         self::assertSame(['callback_not_supported', 503], $callback->process($this->fields('completed')));
-        self::assertSame(['callback_not_supported', 503], $callback->process($this->fields('pending')));
+        self::assertSame(['ok', 200], $callback->process($this->fields('pending')));
         $fields = $this->fields('failed');
         $fields['x_amount'] = '12346';
         self::assertSame(['amount_mismatch', 409], $callback->process($fields));
@@ -74,6 +74,51 @@ final class TuuCallbackTest extends TestCase
         $this->db->prepare("UPDATE ordenes SET estado = 'PAGADA' WHERE id = ?")->execute([$this->order['id']]);
         self::assertSame(['order_state_conflict', 409], $callback->process($this->fields('failed')));
         self::assertSame(2, $this->stock());
+    }
+
+    public function testSandboxApprovalUpdatesStockOnlyOnce(): void
+    {
+        $callback = new TuuCallback($this->db, true);
+        $fields = $this->fields('completed');
+        $fields['x_transaction_id'] = 'sandbox-transaction-123';
+        self::assertSame(['ok', 200], $callback->process($fields));
+        self::assertSame(['ok', 200], $callback->process($fields));
+        self::assertSame('PAGADA', $this->orderState());
+        self::assertSame(1, $this->stock());
+        $query = $this->db->prepare('SELECT tuu_transaction_id FROM ordenes WHERE id = ?');
+        $query->execute([$this->order['id']]);
+        self::assertSame('sandbox-transaction-123', $query->fetchColumn());
+    }
+
+    public function testSandboxApprovalWithoutTransactionIdDoesNotInventOne(): void
+    {
+        $callback = new TuuCallback($this->db, true);
+        self::assertSame(['ok', 200], $callback->process($this->fields('completed')));
+        $query = $this->db->prepare('SELECT tuu_transaction_id FROM ordenes WHERE id = ?');
+        $query->execute([$this->order['id']]);
+        self::assertNull($query->fetchColumn());
+        self::assertSame(1, $this->stock());
+    }
+
+    public function testSandboxApprovalRejectsExpiredReservation(): void
+    {
+        $this->db->prepare('UPDATE ordenes SET expira_en = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?')->execute([$this->order['id']]);
+        self::assertSame(['order_expired', 409], (new TuuCallback($this->db, true))->process($this->fields('completed')));
+        self::assertSame('PENDIENTE', $this->orderState());
+        self::assertSame(2, $this->stock());
+    }
+
+    public function testSandboxApprovalRollsBackWhenStockUnavailable(): void
+    {
+        $this->db->prepare('UPDATE productos SET stock = 0 WHERE sku = ?')->execute([$this->sku]);
+        try {
+            (new TuuCallback($this->db, true))->process($this->fields('completed'));
+            self::fail('La confirmación con stock insuficiente debe fallar.');
+        } catch (\RuntimeException $error) {
+            self::assertSame('Stock insuficiente para confirmar pago.', $error->getMessage());
+        }
+        self::assertSame('PENDIENTE', $this->orderState());
+        self::assertSame(0, $this->stock());
     }
 
     private function fields(string $result): array

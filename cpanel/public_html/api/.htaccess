@@ -2,3 +2,6 @@ Options -Indexes
 <FilesMatch "^_.*\.php$">
   Require all denied
 </FilesMatch>
+<Files "diagnostico.php">
+  Require all denied
+</Files>

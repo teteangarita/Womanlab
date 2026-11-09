@@ -12,22 +12,22 @@ php -S localhost:3390
 
 Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel/public_html` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
 
-**Pagos aún no aptos para producción:** el webhook actual no implementa el callback oficial firmado de TUU y el sandbox no ha sido validado de extremo a extremo. El contenedor bloquea `/api/checkout.php` mientras `TUU_CHECKOUT_ENABLED=0`. No cambies este valor hasta corregir y probar el contrato completo. Los cambios locales sin commit no se despliegan desde GitHub; asegúrate de confirmar y revisar previamente la implementación TUU que vayas a utilizar.
+**Pagos aún no aptos para producción:** el webhook verifica el formulario firmado, pero la interoperabilidad y el identificador de transacción todavía no se han validado con TUU. El checkout solo puede activarse para sandbox aislado con la configuración explícita indicada en `cpanel/DESPLIEGUE_FINAL.md`. El contenedor además bloquea `/api/checkout.php` mientras `TUU_CHECKOUT_ENABLED=0`.
 
 ### 1. Crear y preparar MySQL externo
 
 1. En [Aiven](https://aiven.io/), crea una cuenta y un servicio **MySQL**. Selecciona un plan gratuito si está disponible para tu cuenta y región; la disponibilidad y los límites pueden cambiar. Alternativamente, usa otro MySQL/MariaDB compatible, accesible públicamente desde Render y con TLS.
 2. Desde la consola del proveedor crea o selecciona una base y anota host, puerto, nombre de base, usuario y contraseña. Descarga el certificado CA del servicio. Configura la red del proveedor para permitir conexiones desde Render; los servicios gratuitos no ofrecen una IP de salida fija, así que verifica las opciones y restricciones de tu proveedor.
-3. Antes de publicar el servicio, importa los datos en una base nueva. Los SQL contienen `CREATE DATABASE` y `USE womanlab`, que pueden fallar o seleccionar otra base en servicios administrados. Desde la raíz del repositorio, con el cliente **MySQL 8** y sustituyendo los valores de ejemplo:
+3. Antes de publicar el servicio, importa los datos en una base nueva ya creada. Desde la raíz del repositorio, con el cliente **MySQL 8** y sustituyendo los valores de ejemplo:
 
 	```bash
 	export DB_HOST='mysql-xxxx.aivencloud.com' DB_PORT='12345' DB_NAME='womanlab' DB_USER='avnadmin'
 	export DB_CA='/ruta/al/ca.pem'
-	tail -n +4 cpanel/womanlab-core/database/schema.sql | mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME"
-	tail -n +2 cpanel/womanlab-core/database/seeds.sql | mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME"
+	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < cpanel/womanlab-core/database/schema.sql
+	mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --password --ssl-mode=VERIFY_IDENTITY --ssl-ca="$DB_CA" "$DB_NAME" < cpanel/womanlab-core/database/seeds.sql
 	```
 
-	El cliente solicita la contraseña en cada comando. Para DBeaver, configura una conexión MySQL con host, puerto y base del proveedor, activa TLS con verificación de CA y nombre de host, abre cada archivo SQL y ejecuta primero el esquema y luego los seeds, omitiendo las tres primeras líneas del esquema y la primera línea de los seeds. Estas instrucciones son solo para instalaciones nuevas: no reapliques los seeds a una base con datos, ya que restablecen precios y la cuenta de prueba.
+	El cliente solicita la contraseña en cada comando. Para DBeaver, configura una conexión MySQL con host, puerto y base del proveedor, activa TLS con verificación de CA y nombre de host, abre cada archivo SQL y ejecuta primero el esquema y luego los seeds completos. Estas instrucciones son solo para instalaciones nuevas: no reapliques los seeds a una base con datos, ya que restablecen precios y la cuenta de prueba.
 4. El seed crea `admin@example.test` con una contraseña pública de prueba. **Antes de publicar**, sustitúyela y cambia el correo por uno propio. Genera un hash en una terminal privada con PHP:
 
 	```bash
@@ -78,7 +78,7 @@ Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel
 
 En Render establece `APP_URL` con el subdominio asignado; actualiza también cualquier URL registrada en el portal TUU según las opciones de tu cuenta. El retorno es `https://tu-app.onrender.com/pago/retorno.php?orden=CODIGO` y el webhook es `https://tu-app.onrender.com/api/webhook_tuu.php`. La implementación envía estas direcciones en los campos `x_url_complete`, `x_url_cancel` y `x_url_callback`, no literalmente `return_url` y `webhook_url`.
 
-El webhook PHP actual espera JSON con una firma HMAC del cuerpo, mientras TUU documenta campos de formulario `x_*` y `x_signature`; no procesará correctamente el callback oficial sin adaptación. Confirma con TUU el contrato vigente, hosts, firmas y URLs, implementa y prueba pagos, rechazos y reintentos en sandbox antes de habilitar el checkout. La página de retorno por sí sola no acredita el pago.
+El webhook PHP valida los campos de formulario `x_*` y la firma `x_signature`. La conciliación de aprobaciones está limitada a sandbox aislado y aún debe validarse con un callback real de TUU. Confirma el contrato vigente, el identificador de transacción y los reintentos antes de habilitar producción. La página de retorno por sí sola no acredita el pago.
 
 ### 4. Límites y operación
 

@@ -19,19 +19,19 @@ if (!function_exists('womanlab_base_path')) {
 }
 
 foreach ([
-    'APP_URL', 'APP_TIMEZONE', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD',
+    'APP_ENV', 'APP_URL', 'APP_TIMEZONE', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PASS',
     'TUU_API_KEY', 'TUU_API_URL', 'TUU_ACCOUNT_ID', 'TUU_PAYMENT_HOSTS', 'TUU_CHECKOUT_ENABLED',
     'TUU_DTE_URL', 'MAIL_FROM', 'PUBLIC_UPLOAD_DIR',
 ] as $key) {
     $value = getenv($key);
-    if (is_string($value) && ($value !== '' || $key === 'DB_PASSWORD')) {
+    if (is_string($value) && ($value !== '' || in_array($key, ['DB_PASSWORD', 'DB_PASS'], true))) {
         $_ENV[$key] = $value;
     }
 }
 
 $env = static function (string $key, string $default = ''): string {
     $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    return is_string($value) && ($value !== '' || $key === 'DB_PASSWORD') ? $value : $default;
+    return is_string($value) && ($value !== '' || in_array($key, ['DB_PASSWORD', 'DB_PASS'], true)) ? $value : $default;
 };
 
 ini_set('display_errors', '0');
@@ -56,10 +56,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 Database::configure([
-    'host' => $env('DB_HOST'),
+    'host' => $env('DB_HOST', 'localhost'),
     'port' => $env('DB_PORT', '3306'),
     'name' => $env('DB_NAME'),
     'user' => $env('DB_USER'),
-    'password' => $env('DB_PASSWORD'),
+    'password' => is_string(getenv('DB_PASS')) ? getenv('DB_PASS') : (is_string(getenv('DB_PASSWORD')) ? getenv('DB_PASSWORD') : $env('DB_PASS', $env('DB_PASSWORD'))),
     'charset' => 'utf8mb4',
 ]);

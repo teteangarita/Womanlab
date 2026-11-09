@@ -38,7 +38,7 @@ final class WebhookController
             ApiResponse::fail($error, 422);
         }
         try {
-            [$result, $status] = (new TuuCallback($db))->process($fields);
+            [$result, $status] = (new TuuCallback($db, CheckoutController::sandboxEnabled($_ENV)))->process($fields);
         } catch (Throwable $error) {
             error_log('TUU callback processing failed: ' . get_class($error));
             ApiResponse::fail('webhook_processing_failed', 500);

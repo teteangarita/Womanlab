@@ -2,11 +2,11 @@
 
 ## Estado y límites
 
-**No está listo para producción.** Mantén `TUU_CHECKOUT_ENABLED=0`: además existe un bloqueo en código que impide crear intentos incluso si la variable vale `1`. El sandbox devolvió un error de validación y todavía faltan una respuesta exitosa verificable, el campo real del identificador de transacción y una prueba de interoperabilidad completa. No retires el bloqueo hasta resolver estos puntos, implementar y probar pagos y stock, y revisar DTE con el proveedor.
+**No está listo para producción.** El checkout solo se permite para pruebas aisladas con `APP_ENV=sandbox`, `TUU_CHECKOUT_ENABLED=1`, endpoint sandbox exacto y cuenta pública de integración. Mantén `TUU_CHECKOUT_ENABLED=0` en producción. El sandbox devolvió un error de validación y todavía faltan una respuesta exitosa verificable, el campo real del identificador de transacción y una prueba de interoperabilidad completa. Revisa DTE y conciliación con el proveedor antes de producción.
 
 La [documentación oficial de TUU](https://developers.tuu.cl/docs/payment-intent) describe un callback POST `application/x-www-form-urlencoded`, firmado mediante `x_signature`: HMAC-SHA256 hexadecimal con la llave secreta, sobre los nombres y valores `x_` ordenados por nombre, excluyendo `x_signature`. El código usa `TUU_API_KEY` como llave; confirma con TUU que esa credencial corresponde a la llave secreta de firma de tu cuenta. La cabecera `ApiKey` se envía al crear el intento, pero no figura en las cabeceras requeridas de la página consultada: confirma su necesidad con TUU.
 
-El callback valida firma, cuenta, referencia, monto entero CLP y moneda. `failed` cambia una orden pendiente a rechazada y guarda su firma dentro de una transacción; solo un reintento con la misma firma devuelve 200 sin modificar stock. Una referencia inexistente, discrepancia o estado incompatible no devuelve 200. `completed` y `pending` devuelven 503 sin confirmar pagos ni descontar stock: **no se ha implementado la confirmación de pago**, porque falta el identificador de transacción confirmado. TUU documenta hasta 10 reintentos, por lo que un 503 no garantiza reintentos indefinidos. Monitorea y reconcilia manualmente cualquier notificación no procesada. Nunca confirmes pagos desde el retorno del navegador.
+El callback valida firma, cuenta, referencia, monto entero CLP y moneda. `failed` rechaza la orden; `pending` no la modifica. En sandbox, `completed` confirma una reserva vigente y descuenta stock en una transacción; un duplicado con la misma firma no repite el descuento. `x_transaction_id` se guarda si llega firmado; no se inventa uno. En producción `completed` continúa bloqueado. TUU documenta hasta 10 reintentos, por lo que un error no garantiza reintentos indefinidos. Monitorea y reconcilia manualmente notificaciones no procesadas. Nunca confirmes pagos desde el retorno del navegador.
 
 ## Rutas y dependencias
 
@@ -46,7 +46,7 @@ chmod 700 womanlab-core/logs
 
 ## Base y configuración
 
-Crea base y usuario desde cPanel y anota los nombres completos. En phpMyAdmin selecciona la base nueva e importa `database/schema.sql` omitiendo `CREATE DATABASE` y `USE`; después importa `database/seeds.sql` omitiendo `USE womanlab;`. No repitas seeds en una instalación existente: pueden restablecer datos. El seed incluye una cuenta administrativa pública de prueba; elimínala o cambia su correo y contraseña con un hash `password_hash()` antes de publicar. Consulta `cpanel/README.md` para migraciones, cron y administración.
+Crea base y usuario desde cPanel y anota los nombres completos. En phpMyAdmin selecciona la base nueva e importa `database/schema.sql` completo; después importa `database/seeds.sql` completo. No repitas seeds en una instalación existente: pueden restablecer datos. El seed incluye una cuenta administrativa pública de prueba; elimínala o cambia su correo y contraseña con un hash `password_hash()` antes de publicar. Consulta `cpanel/README.md` para migraciones, cron y administración.
 
 En una base existente con el esquema anterior, realiza un respaldo y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql`. No la apliques a una base nueva creada con el esquema actualizado, que ya incluye la columna. Los rechazos anteriores no tienen firma registrada y no se reconocen como reintentos procesados.
 

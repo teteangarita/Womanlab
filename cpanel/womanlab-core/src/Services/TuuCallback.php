@@ -8,7 +8,7 @@ use Throwable;
 
 final class TuuCallback
 {
-    public function __construct(private readonly PDO $db)
+    public function __construct(private readonly PDO $db, private readonly bool $sandbox = false)
     {
     }
 
@@ -35,7 +35,7 @@ final class TuuCallback
     {
         try {
             $this->db->beginTransaction();
-            $query = $this->db->prepare('SELECT id, codigo_orden, monto_total, estado, tuu_callback_signature FROM ordenes WHERE codigo_orden = ? FOR UPDATE');
+            $query = $this->db->prepare('SELECT id, codigo_orden, monto_total, estado, tuu_callback_signature, expira_en > NOW() AS reservation_active FROM ordenes WHERE codigo_orden = ? FOR UPDATE');
             $query->execute([$fields['x_reference']]);
             $order = $query->fetch(PDO::FETCH_ASSOC);
             if (!$order || !hash_equals((string) $order['codigo_orden'], $fields['x_reference'])) {
@@ -47,9 +47,56 @@ final class TuuCallback
                 $this->db->rollBack();
                 return ['amount_mismatch', 409];
             }
-            if ($fields['x_result'] !== 'failed') {
+            if ($fields['x_result'] === 'pending') {
+                $this->db->commit();
+                return ['ok', 200];
+            }
+            if ($fields['x_result'] === 'completed' && !$this->sandbox) {
                 $this->db->rollBack();
                 return ['callback_not_supported', 503];
+            }
+            if ($fields['x_result'] === 'completed') {
+                $transactionId = $fields['x_transaction_id'] ?? null;
+                if ($transactionId !== null && (!is_string($transactionId) || $transactionId === '' || strlen($transactionId) > 255)) {
+                    $this->db->rollBack();
+                    return ['invalid_transaction', 422];
+                }
+                if ($order['estado'] === 'PAGADA') {
+                    if (!is_string($order['tuu_callback_signature']) || !hash_equals($order['tuu_callback_signature'], $fields['x_signature'])) {
+                        $this->db->rollBack();
+                        return ['order_state_conflict', 409];
+                    }
+                    $this->db->commit();
+                    return ['ok', 200];
+                }
+                if ($order['estado'] !== 'PENDIENTE') {
+                    $this->db->rollBack();
+                    return ['order_state_conflict', 409];
+                }
+                if (!(int) $order['reservation_active']) {
+                    $this->db->rollBack();
+                    return ['order_expired', 409];
+                }
+                $items = $this->db->prepare('SELECT oi.producto_id, oi.cantidad FROM orden_items oi JOIN productos p ON p.id = oi.producto_id WHERE oi.orden_id = ? ORDER BY p.sku FOR UPDATE');
+                $items->execute([$order['id']]);
+                $rows = $items->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows === []) {
+                    throw new \RuntimeException('Orden sin artículos.');
+                }
+                $stock = $this->db->prepare('UPDATE productos SET stock = stock - ? WHERE id = ? AND stock >= ?');
+                foreach ($rows as $item) {
+                    $stock->execute([(int) $item['cantidad'], (int) $item['producto_id'], (int) $item['cantidad']]);
+                    if ($stock->rowCount() !== 1) {
+                        throw new \RuntimeException('Stock insuficiente para confirmar pago.');
+                    }
+                }
+                $update = $this->db->prepare("UPDATE ordenes SET estado = 'PAGADA', tuu_transaction_id = ?, tuu_callback_signature = ? WHERE id = ? AND estado = 'PENDIENTE'");
+                $update->execute([$transactionId, $fields['x_signature'], $order['id']]);
+                if ($update->rowCount() !== 1) {
+                    throw new \RuntimeException('No se pudo confirmar la orden.');
+                }
+                $this->db->commit();
+                return ['ok', 200];
             }
             if ($order['estado'] === 'PENDIENTE') {
                 $update = $this->db->prepare("UPDATE ordenes SET estado = 'RECHAZADA', tuu_callback_signature = ? WHERE id = ? AND estado = 'PENDIENTE'");

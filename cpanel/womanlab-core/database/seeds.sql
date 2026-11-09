@@ -1,5 +1,3 @@
-USE womanlab;
-
 INSERT INTO productos (sku, nombre, descripcion, precio, stock, imagen_url, activo) VALUES
 ('plan-membership-monthly', 'Membresía Woman Lab (Mensual)', 'Acceso mensual al gimnasio.', 40000, 999999, 'assets/images/hero_gym.png', 1),
 ('plan-membership-quarterly', 'Membresía Woman Lab (Trimestral)', 'Acceso trimestral al gimnasio.', 105000, 999999, 'assets/images/hero_gym.png', 1),
