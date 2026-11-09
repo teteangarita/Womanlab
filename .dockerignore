@@ -4,5 +4,6 @@ cpanel/vendor
 cpanel/womanlab-core/.env
 cpanel/womanlab-core/.env.*
 !cpanel/womanlab-core/.env.example
+cpanel/womanlab-core/logs
 cpanel/public_html/uploads/images/*
 !cpanel/public_html/uploads/images/.htaccess

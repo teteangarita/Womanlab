@@ -15,8 +15,7 @@ final class TuuClientTest extends TestCase
         $_ENV['TUU_API_KEY'] = 'test-key';
         $_ENV['TUU_API_URL'] = 'https://frontend-api.payment.haulmer.dev/v1/payment';
         $_ENV['TUU_ACCOUNT_ID'] = '62224230';
-        $_ENV['TUU_RETURN_URL'] = 'https://womanlab.test/pago/resultado.php';
-        $_ENV['TUU_WEBHOOK_URL'] = 'https://womanlab.test/api/webhook_tuu.php';
+        $_ENV['APP_URL'] = 'https://womanlab.test/';
         $_ENV['TUU_PAYMENT_HOSTS'] = 'checkout.tuu.cl';
     }
 
@@ -33,6 +32,8 @@ final class TuuClientTest extends TestCase
                 TestCase::assertSame('CLP', $payload['x_currency']);
                 TestCase::assertSame(TuuClient::signFields($payload, 'test-key'), $payload['x_signature']);
                 TestCase::assertSame('https://womanlab.test/api/webhook_tuu.php', $payload['x_url_callback']);
+                TestCase::assertSame('https://womanlab.test/pago/retorno.php?orden=order-test-1', $payload['x_url_complete']);
+                TestCase::assertSame($payload['x_url_complete'], $payload['x_url_cancel']);
                 TestCase::assertArrayNotHasKey('secret', $payload);
                 return ['url' => 'https://checkout.tuu.cl/session/123', 'token' => 'session-123'];
             }
@@ -56,9 +57,9 @@ final class TuuClientTest extends TestCase
 
     public function testRejectsNonHttpsCallback(): void
     {
-        $_ENV['TUU_WEBHOOK_URL'] = 'http://localhost/callback';
+        $_ENV['APP_URL'] = 'http://localhost';
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('deben usar HTTPS');
+        $this->expectExceptionMessage('APP_URL debe ser un origen HTTPS válido');
         (new TuuClient())->createCheckout(
             ['codigo_orden' => 'order-test-4', 'monto_total' => 1],
             [],

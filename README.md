@@ -64,8 +64,7 @@ Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel
 | `TUU_API_KEY` | Llave secreta TUU; no usar la de producción en pruebas. | `********` |
 | `TUU_CHECKOUT_ENABLED` | Mantener en `0` hasta validar pagos y webhook. | `0` |
 | `TUU_PAYMENT_HOSTS` | Hosts HTTPS de pago autorizados por TUU, separados por comas, sin esquema. | `host-confirmado-por-tuu.cl` |
-| `TUU_RETURN_URL` | URL pública de resultado del pago. | `https://tu-app.onrender.com/pago/resultado.php` |
-| `TUU_WEBHOOK_URL` | URL pública del webhook. | `https://tu-app.onrender.com/api/webhook_tuu.php` |
+| `TUU_RETURN_URL`, `TUU_WEBHOOK_URL` | Variables antiguas, ya no utilizadas; ambas URLs se derivan de `APP_URL`. | No requieren configuración |
 | `TUU_WEBHOOK_SECRET` | Secreto para la implementación actual del webhook; su contrato debe corregirse antes de usarlo con TUU. | `********` |
 | `APP_URL` | Obligatoria. Origen HTTPS público, sin barra final. | `https://tu-app.onrender.com` |
 | `APP_ENV` | Identifica el entorno; el código actual no cambia su comportamiento por este valor. | `production` |
@@ -77,9 +76,9 @@ Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `cpanel
 
 ### 3. Retorno y webhook TUU
 
-En Render establece `APP_URL`, `TUU_RETURN_URL` y `TUU_WEBHOOK_URL` con el subdominio asignado; actualiza también cualquier URL registrada en el portal TUU según las opciones de tu cuenta. El retorno es `https://tu-app.onrender.com/pago/resultado.php` y el webhook es `https://tu-app.onrender.com/api/webhook_tuu.php`. La implementación local actual envía estas direcciones en los campos `x_url_complete`, `x_url_cancel` y `x_url_callback`, no literalmente `return_url` y `webhook_url`.
+En Render establece `APP_URL` con el subdominio asignado; actualiza también cualquier URL registrada en el portal TUU según las opciones de tu cuenta. El retorno es `https://tu-app.onrender.com/pago/retorno.php?orden=CODIGO` y el webhook es `https://tu-app.onrender.com/api/webhook_tuu.php`. La implementación envía estas direcciones en los campos `x_url_complete`, `x_url_cancel` y `x_url_callback`, no literalmente `return_url` y `webhook_url`.
 
-La versión TUU previamente confirmada en Git usa otro contrato y `TUU_CHECKOUT_URL`; las modificaciones locales no confirmadas usan `TUU_API_URL` y `TUU_ACCOUNT_ID`. Confirma la versión revisada antes de desplegarla. El webhook PHP actual espera JSON con una firma HMAC del cuerpo, mientras TUU documenta campos de formulario `x_*` y `x_signature`; no procesará correctamente el callback oficial sin adaptación. Confirma con TUU el contrato vigente, hosts, firmas y URLs, implementa y prueba pagos, rechazos y reintentos en sandbox antes de habilitar el checkout. La página de retorno por sí sola no acredita el pago.
+El webhook PHP actual espera JSON con una firma HMAC del cuerpo, mientras TUU documenta campos de formulario `x_*` y `x_signature`; no procesará correctamente el callback oficial sin adaptación. Confirma con TUU el contrato vigente, hosts, firmas y URLs, implementa y prueba pagos, rechazos y reintentos en sandbox antes de habilitar el checkout. La página de retorno por sí sola no acredita el pago.
 
 ### 4. Límites y operación
 

@@ -16,23 +16,24 @@ final class TuuClient
         $apiKey = $_ENV['TUU_API_KEY'] ?? '';
         $checkoutUrl = $_ENV['TUU_API_URL'] ?? '';
         $accountId = $_ENV['TUU_ACCOUNT_ID'] ?? '';
-        $returnUrl = $_ENV['TUU_RETURN_URL'] ?? '';
-        $webhookUrl = $_ENV['TUU_WEBHOOK_URL'] ?? '';
+        $appUrl = rtrim($_ENV['APP_URL'] ?? '', '/');
 
-        if ($apiKey === '' || $accountId === '' || $checkoutUrl === '' || $returnUrl === '' || $webhookUrl === '') {
+        if ($apiKey === '' || $accountId === '' || $checkoutUrl === '' || $appUrl === '') {
             throw new RuntimeException('La configuración de TUU está incompleta.');
         }
 
-        foreach ([$returnUrl, $webhookUrl] as $url) {
-            if (!filter_var($url, FILTER_VALIDATE_URL) || parse_url($url, PHP_URL_SCHEME) !== 'https') {
-                throw new RuntimeException('Las URL de retorno y callback de TUU deben usar HTTPS.');
-            }
+        $appParts = parse_url($appUrl);
+        if (!filter_var($appUrl, FILTER_VALIDATE_URL) || !is_array($appParts)
+            || ($appParts['scheme'] ?? '') !== 'https' || empty($appParts['host'])
+            || isset($appParts['user']) || isset($appParts['pass'])
+            || isset($appParts['query']) || isset($appParts['fragment']) || !empty($appParts['path'])) {
+            throw new RuntimeException('APP_URL debe ser un origen HTTPS válido.');
         }
 
         $nameParts = preg_split('/\s+/u', trim((string) ($customer['name'] ?? '')), 2) ?: [];
         $reference = (string) $order['codigo_orden'];
-        $separator = str_contains($returnUrl, '?') ? '&' : '?';
-        $resultUrl = $returnUrl . $separator . 'codigo_orden=' . rawurlencode($reference);
+        $resultUrl = $appUrl . '/pago/retorno.php?orden=' . rawurlencode($reference);
+        $webhookUrl = $appUrl . '/api/webhook_tuu.php';
         $payload = [
             'x_account_id' => $accountId,
             'x_amount' => (int) $order['monto_total'],

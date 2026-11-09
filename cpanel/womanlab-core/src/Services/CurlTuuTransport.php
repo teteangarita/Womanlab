@@ -7,6 +7,10 @@ use RuntimeException;
 
 final class CurlTuuTransport implements TuuTransport
 {
+    public function __construct(private readonly ?string $errorLogPath = null)
+    {
+    }
+
     public function post(string $url, string $apiKey, array $payload): array
     {
         if (!extension_loaded('curl')) {
@@ -16,11 +20,10 @@ final class CurlTuuTransport implements TuuTransport
         if ($handle === false) {
             throw new RuntimeException('No se pudo iniciar cURL.');
         }
-        $headers = ['Accept: application/json', 'Content-Type: application/json'];
+        $headers = ['Accept: application/json', 'Content-Type: application/json', 'ApiKey: ' . $apiKey];
         if (isset($payload['x_account_id'])) {
             $headers[] = 'X-REDIRECT: false';
         } else {
-            $headers[] = 'ApiKey: ' . $apiKey;
             $headers[] = 'Idempotency-Key: ' . ($payload['reference'] ?? '');
         }
         curl_setopt_array($handle, [
@@ -36,9 +39,13 @@ final class CurlTuuTransport implements TuuTransport
         $body = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_error($handle);
-        curl_close($handle);
-        if (!is_string($body) || $status < 200 || $status >= 300) {
-            error_log('TUU request failed: HTTP ' . $status . ' ' . $error);
+        unset($handle);
+        if (!is_string($body) || !in_array($status, [200, 201], true)) {
+            $message = date('c') . ' TUU request failed: HTTP ' . $status . ($error !== '' ? ' (transport error)' : '') . PHP_EOL;
+            $logPath = $this->errorLogPath ?? dirname(__DIR__, 2) . '/logs/tuu_errors.log';
+            if (@file_put_contents($logPath, $message, FILE_APPEND | LOCK_EX) === false) {
+                error_log(trim($message));
+            }
             throw new RuntimeException('No se pudo completar la solicitud TUU.');
         }
         if (isset($payload['x_account_id']) && filter_var(trim($body), FILTER_VALIDATE_URL)) {

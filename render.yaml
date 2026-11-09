@@ -27,10 +27,6 @@ services:
         value: "0"
       - key: TUU_PAYMENT_HOSTS
         sync: false
-      - key: TUU_RETURN_URL
-        sync: false
-      - key: TUU_WEBHOOK_URL
-        sync: false
       - key: TUU_WEBHOOK_SECRET
         sync: false
       - key: APP_URL

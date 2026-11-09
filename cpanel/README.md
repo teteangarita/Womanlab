@@ -113,7 +113,7 @@ Después de confirmar `PAID`, el sistema invoca `TuuClient::issueDocument()`. `T
 En el portal TUU:
 
 1. Solicita acceso de comercio a Pago Online y a Autoservicio DTE, API key de pruebas y producción, secreto de firma del webhook y endpoints oficiales para cada ambiente.
-2. Registra como URL de retorno `https://TU-DOMINIO/pago/resultado.php`. La sesión recibe como `return_url` esta URL con `codigo_orden`.
+2. El retorno se construye desde `APP_URL` como `https://TU-DOMINIO/pago/retorno.php?orden=CODIGO`; este redirige a la página de resultado existente.
 3. Registra como webhook `https://TU-DOMINIO/api/webhook_tuu.php`, configura la firma/secret y pide ejemplos firmados de pago exitoso, rechazo y reintento.
 4. Solicita el host exacto de checkout, agrégalo a `TUU_PAYMENT_HOSTS` sin esquema y valida certificados TLS.
 5. Habilita DTE, solicita URL/credenciales y valida boleta/factura y folio en ambiente de certificación antes de activarlo.
@@ -139,6 +139,39 @@ php -S localhost:3390
 En ese modo abre `http://localhost:3390/admin/login.php`. También se admite iniciar PHP desde la raíz del repositorio con `php -S localhost:3390`; entonces la ruta es `http://localhost:3390/cpanel/public_html/admin/login.php`. El panel detecta ese prefijo local. El formulario envía credenciales por `POST`, nunca en parámetros de URL.
 
 ## Configuración en cPanelHost
+
+### Configuración privada y URLs de TUU
+
+El dominio debe tener como raíz web `/home/CPANEL_USER/public_html`. Instala el núcleo en `/home/CPANEL_USER/womanlab-core`, nunca dentro de `public_html`. Las entradas PHP buscan ese directorio como hermano de `public_html`; `WOMANLAB_CORE_PATH` solo es necesario si el proveedor usa otra ubicación. El bootstrap carga `/home/CPANEL_USER/vendor/autoload.php` y el `.env` situado en la raíz del núcleo. Comprueba en cPanel la raíz efectiva del dominio, especialmente si es un dominio adicional o subdominio: no basta con que el nombre de la carpeta sea `public_html`.
+
+1. Copia el contenido de `cpanel/public_html/`, incluidos sus archivos `.htaccess`, a la raíz web. Copia `cpanel/womanlab-core/` a `/home/CPANEL_USER/womanlab-core/`, sin copiar un `.env` de desarrollo, y `cpanel/composer.json` y `cpanel/composer.lock` a `/home/CPANEL_USER/`. No copies `womanlab-core`, `vendor` ni archivos de configuración privados a la raíz web.
+2. Desde SSH o Terminal de cPanel, instala las dependencias fuera de la raíz web y crea la configuración privada, sustituyendo `CPANEL_USER` por el usuario real:
+
+  ```bash
+  cd /home/CPANEL_USER
+  composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative
+  cp -n womanlab-core/.env.example womanlab-core/.env
+  chmod 600 womanlab-core/.env
+  ```
+
+  `cp -n` no sustituye un `.env` existente. Edita el archivo privado desde el administrador de archivos o terminal y configura las credenciales de base de datos, las siguientes variables TUU y las demás variables necesarias. Si PHP no puede leer un archivo con permisos `600`, consulta al hosting para ajustar propietario o permisos de grupo sin hacerlo legible públicamente. Nunca subas el `.env` ni compartas su contenido o claves por chat.
+
+  ```dotenv
+  APP_URL=https://tudominio.cl
+  TUU_API_URL=https://frontend-api.payment.haulmer.dev/v1/payment
+  TUU_ACCOUNT_ID=62224230
+  TUU_API_KEY=REEMPLAZAR_POR_LLAVE_SECRETA_DE_SANDBOX
+  TUU_CHECKOUT_ENABLED=0
+  TUU_PAYMENT_HOSTS=HOST_DE_PAGO_CONFIRMADO_POR_TUU
+  TUU_WEBHOOK_SECRET=REEMPLAZAR_POR_SECRETO_DEL_WEBHOOK_ANTERIOR
+  ```
+
+  Escribe las URLs como texto plano, sin corchetes de Markdown ni barra final en `APP_URL`. El ID indicado y la llave publicada por TUU son solo para integración; solicita credenciales independientes para producción y no las mezcles entre ambientes. El endpoint de producción documentado es `https://core.payment.haulmer.com/api/v1/payment`; confirma con TUU los datos vigentes de la cuenta antes de cambiarlo. `TUU_PAYMENT_HOSTS` contiene hosts autorizados sin esquema, separados por comas. `TUU_WEBHOOK_SECRET` y `TUU_SIGNATURE_HEADER` corresponden exclusivamente al webhook JSON anterior, no a la verificación oficial de `x_signature`; no los interpretes como una configuración lista para recibir callbacks oficiales.
+3. En **SSL/TLS Status**, activa AutoSSL y verifica que el certificado cubra el dominio de `APP_URL`. Comprueba que `/pago/retorno.php` y `/api/webhook_tuu.php` se resuelvan directamente por HTTPS, sin prefijos locales como `/cpanel/public_html`. TUU recibe estas URLs derivadas de `APP_URL` en `x_url_complete`, `x_url_cancel` y `x_url_callback` de cada solicitud. La URL de retorno solo informa al cliente y nunca confirma una orden.
+4. Comprueba que ninguna copia del `.env` esté expuesta. Por ejemplo, `curl -i https://tudominio.cl/.env` y `curl -i https://tudominio.cl/womanlab-core/.env` deben devolver `403` o `404`, nunca el contenido del archivo. Si devuelven una redirección, inspecciona el destino final y corrige la configuración antes de publicar. Una respuesta 404 no sustituye revisar físicamente el DocumentRoot y las copias del archivo.
+5. El endpoint `/api/webhook_tuu.php` existe, pero **todavía no recibe correctamente el callback oficial**: espera JSON firmado por cabecera, mientras que TUU documenta POST `application/x-www-form-urlencoded` con campos `x_*` y firma `x_signature`. La documentación disponible no especifica aquí el identificador de transacción que exige el controlador actual. Solicita a TUU un ejemplo real firmado y confirma el campo de ID, la llave de firma, estados y reintentos; implementa y prueba la verificación y conciliación antes de aceptar pagos. No habilites `TUU_CHECKOUT_ENABLED` para producción por el mero hecho de que la URL responda. La prueba completa debe incluir firma inválida, monto/cuenta/moneda incorrectos, duplicados, pago rechazado y pago aprobado, sin confiar en el retorno del navegador.
+
+Los datos de sandbox publicados por TUU no son secretos de producción. Si alguna credencial privada real se compartió o pudo quedar expuesta, rótala con el proveedor antes de usarla.
 
 1. En Git, confirma que estás en `feature/migration-php-tuu`; no despliegues desde `main` durante validación.
 2. En **MultiPHP Manager**, selecciona PHP 8.2 o superior y habilita `PDO`, `pdo_mysql`, `curl`, `fileinfo`, `mbstring`, `JSON` y `OpenSSL`.

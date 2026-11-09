@@ -6,6 +6,7 @@ namespace WomanLab\Controllers;
 use PDO;
 use Throwable;
 use WomanLab\Services\TuuClient;
+use WomanLab\Services\WebhookSignature;
 use WomanLab\Support\ApiResponse;
 
 final class WebhookController
@@ -24,15 +25,16 @@ final class WebhookController
             ApiResponse::fail('webhook_not_configured', 503);
         }
 
-        $signature = preg_replace('/^sha256=/i', '', trim($signature)) ?? '';
-        $expected = hash_hmac('sha256', $raw, $secret);
-        if (!preg_match('/^[a-f0-9]{64}$/i', $signature) || !hash_equals($expected, strtolower($signature))) {
+        if (!WebhookSignature::valid($raw, $secret, $signature)) {
             ApiResponse::fail('invalid_signature', 401);
         }
 
         try {
             $event = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
+            ApiResponse::fail('invalid_json', 400);
+        }
+        if (!is_array($event)) {
             ApiResponse::fail('invalid_json', 400);
         }
         $code = (string) ($event['buy_order'] ?? $event['order_code'] ?? '');
@@ -60,6 +62,11 @@ final class WebhookController
             if ((int) $amount !== (int) $order['monto_total']) {
                 $db->rollBack();
                 ApiResponse::fail('amount_mismatch', 409);
+            }
+            if ($status === 'PAID' && $order['estado'] === 'PAGADA'
+                && ($transactionId === '' || $transactionId !== $order['tuu_transaction_id'])) {
+                $db->rollBack();
+                ApiResponse::fail('transaction_mismatch', 409);
             }
 
             if ($order['estado'] === 'PENDIENTE'
@@ -104,10 +111,6 @@ final class WebhookController
                 }
             } elseif ($status === 'PAID' && $order['estado'] === 'PAGADA'
                 && in_array($order['dte_estado'], ['PENDIENTE', 'ERROR'], true)) {
-                if ($transactionId === '' || $transactionId !== $order['tuu_transaction_id']) {
-                    $db->rollBack();
-                    ApiResponse::fail('transaction_mismatch', 409);
-                }
                 $claim = $db->prepare(
                     "UPDATE ordenes SET dte_estado = 'EMITIENDO'
                      WHERE id = ? AND dte_estado IN ('PENDIENTE', 'ERROR')"
@@ -149,9 +152,8 @@ final class WebhookController
                 error_log('TUU DTE emission failed for ' . $code . ': ' . $error->getMessage());
                 $db->prepare("UPDATE ordenes SET dte_estado = 'ERROR' WHERE id = ? AND estado = 'PAGADA' AND dte_estado = 'EMITIENDO'")
                     ->execute([$order['id']]);
-                ApiResponse::fail('payment_confirmed_document_pending', 503);
             }
         }
-        ApiResponse::json(['received' => true, 'duplicate' => $duplicate]);
+        ApiResponse::json(['status' => 'ok']);
     }
 }
