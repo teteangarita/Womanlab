@@ -115,8 +115,22 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
   font-weight: 600;
   transition: color var(--transition-fast);
+}
+
+.top-link i {
+  flex: 0 0 auto;
+  width: 1.1em;
+  text-align: center;
+}
+
+.top-social {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .top-link:hover {
@@ -125,7 +139,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .social-divider {
   color: rgba(168, 85, 247, 0.3);
-  margin: 0 0.3rem;
+  margin: 0;
 }
 
 .whatsapp-link:hover {
@@ -198,12 +212,17 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
+  position: relative;
 }
 
 .brand-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  margin-right: 2rem;
+  white-space: nowrap;
   text-decoration: none;
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
@@ -213,19 +232,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .header-logo-img {
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--primary);
   box-shadow: 0 0 12px var(--primary-glow);
+  margin-right: 0.25rem;
 }
 
 .brand-logo span {
   color: var(--primary);
 }
 
-.brand-badge {
+.brand-logo .brand-badge {
   background: var(--pill-gradient);
   color: #ffffff;
   padding: 0.2rem 0.6rem;
@@ -237,11 +258,21 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
+.main-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: clamp(1rem, 2vw, 1.5rem);
   list-style: none;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
 }
 
 .nav-link {
@@ -293,7 +324,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-commerce-actions {
-  gap: 0.65rem;
+  gap: 0.75rem;
   padding-left: 0.85rem;
   border-left: 1px solid var(--border-glass);
 }
@@ -350,7 +381,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-full);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -366,8 +397,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .cart-count {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -8px;
   background: var(--secondary);
   color: var(--text-dark);
   font-size: 0.75rem;
@@ -1768,6 +1799,13 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
   }
 
+  .main-nav {
+    display: none;
+  }
+
+  .brand-logo {
+    margin-right: 0;
+  }
   .nav-actions {
     margin-left: auto;
   }
@@ -1799,7 +1837,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 36px;
   }
 
-  .brand-badge {
+  .brand-logo .brand-badge {
     padding: 0.15rem 0.35rem;
     font-size: 0.6rem;
   }
@@ -1840,7 +1878,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 30px;
   }
 
-  .brand-badge {
+  .brand-logo .brand-badge {
     display: none;
   }
 
