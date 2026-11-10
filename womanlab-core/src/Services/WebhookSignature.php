@@ -29,7 +29,7 @@ final class WebhookSignature
 
     public static function valid(array $fields, string $secret): bool
     {
-        $signature = $fields['x_signature'] ?? '';
+        $signature = is_string($fields['x_signature'] ?? null) ? strtolower($fields['x_signature']) : '';
         if ($secret === '' || !is_string($signature) || preg_match('/^[a-f0-9]{64}$/', $signature) !== 1) {
             return false;
         }

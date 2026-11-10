@@ -39,7 +39,7 @@ $configured = static function (string $key, string $default = ''): string {
 echo "Diagnóstico CLI de Woman Lab para cPanel\n";
 echo 'Raíz del paquete: ' . $projectPath . PHP_EOL;
 echo 'Núcleo: ' . $corePath . PHP_EOL;
-echo 'DocumentRoot esperado del paquete: ' . $projectPath . '/public_html' . PHP_EOL;
+echo 'Carpeta pública del paquete (su contenido va a la raíz web): ' . $projectPath . '/tienda_public' . PHP_EOL;
 
 if (PHP_VERSION_ID >= 80200) {
     $report('OK', 'PHP ' . PHP_VERSION . ' (mínimo requerido: 8.2)');

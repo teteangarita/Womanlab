@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use Dotenv\Dotenv;
 use WomanLab\Support\Database;
+use WomanLab\Support\TuuConfig;
 
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -33,6 +34,14 @@ foreach ([
     $value = getenv($key);
     if (is_string($value) && ($value !== '' || in_array($key, ['DB_PASSWORD', 'DB_PASS'], true))) {
         $_ENV[$key] = $value;
+    }
+}
+
+// Acepta alias (TUU_API_KEY, TUU_WEBHOOK_SECRET) y, como respaldo, lee womanlab-core/.env directamente.
+if (($_ENV['TUU_SECRET_KEY'] ?? '') === '') {
+    $tuuSecret = TuuConfig::secretKey(__DIR__ . '/../.env');
+    if ($tuuSecret !== '') {
+        $_ENV['TUU_SECRET_KEY'] = $tuuSecret;
     }
 }
 

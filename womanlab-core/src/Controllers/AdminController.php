@@ -140,7 +140,9 @@ final class AdminController
             ApiResponse::fail('unsupported_image', 415);
         }
 
-        $directory = $_ENV['PUBLIC_UPLOAD_DIR'] ?? dirname(__DIR__, 3) . '/public_html/uploads/images';
+        $documentRoot = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+        $directory = $_ENV['PUBLIC_UPLOAD_DIR']
+            ?? ($documentRoot !== '' ? $documentRoot . '/uploads/images' : dirname(__DIR__, 3) . '/tienda_public/uploads/images');
         if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) {
             ApiResponse::fail('upload_unavailable', 500);
         }

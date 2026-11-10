@@ -10,26 +10,40 @@ El callback valida firma, cuenta, referencia, monto entero CLP y moneda. `failed
 
 ## Rutas y dependencias
 
-Confirma el DocumentRoot en cPanel. Para un dominio principal con raíz `/home/CPANEL_USER/public_html`, sube:
+La carpeta pública del repositorio es `tienda_public/`. **Su contenido** (no la carpeta) se copia a la raíz web del subdominio, de modo que las URLs públicas nunca incluyen `public_html` ni `tienda_public`: `https://tienda.womanlab.cl/api/webhook_tuu.php`, `https://tienda.womanlab.cl/pago/exito.php`, etc.
+
+En cPanel > **Dominios**, anota el DocumentRoot de `tienda.womanlab.cl` (por ejemplo `/home/CPANEL_USER/public_html/tienda.womanlab.cl`) y usa exactamente esa ruta. Núcleo, Composer y `.env` van en `/home/CPANEL_USER/`, fuera de cualquier DocumentRoot:
 
 ```text
 /home/CPANEL_USER/
   composer.json
   composer.lock
   vendor/                          # privado
-  womanlab-core/
-    .env                           # privado
-    logs/                          # privado
+  womanlab-core/                   # privado, fuera de la raíz web
+    .env
+    logs/                          # php_errors.log, tuu_errors.log, webhook_tuu.log
     config/ src/ database/ bin/
-  public_html/                     # DocumentRoot
-    .htaccess
-    api/.htaccess
-    api/webhook_tuu.php
-    pago/retorno.php
-    uploads/.htaccess
+  public_html/
+    tienda.womanlab.cl/            # DocumentRoot del subdominio = contenido de tienda_public/
+      .htaccess
+      index.html
+      api/ (.htaccess, webhook_tuu.php, _core_path.php, ...)
+      admin/ css/ js/ assets/ pago/
+      uploads/images/ (.htaccess)
+      test_tuu_diagnostico.php     # solo mientras diagnosticas; luego elimínalo
 ```
 
-Copia el contenido de `public_html/` a la raíz del dominio, incluidos los tres `.htaccess`. Copia `womanlab-core/` como hermano de `public_html`, sin el `.env` local, y `composer.json` y `composer.lock` al directorio padre del núcleo. Nunca publiques `vendor`, el núcleo, logs o `.env`, tampoco bajo otro DocumentRoot. Si el DocumentRoot difiere, configura `WOMANLAB_CORE_PATH` en PHP con la ruta absoluta del núcleo; Composer debe estar en su directorio padre.
+Copia el contenido de `tienda_public/` a la raíz del subdominio, incluidos los `.htaccess` ocultos. Copia `womanlab-core/` a `/home/CPANEL_USER/womanlab-core`, sin el `.env` local, y `composer.json` y `composer.lock` a `/home/CPANEL_USER/`. Nunca publiques `vendor`, el núcleo, logs o `.env`, tampoco bajo otro DocumentRoot, y nunca subas la raíz completa del repositorio al DocumentRoot: eso expone carpetas internas y produce URLs como `/public_html/...`.
+
+Las entradas PHP localizan el núcleo con `api/_core_path.php`: primero `WOMANLAB_CORE_PATH`; si no existe, buscan `womanlab-core/config/bootstrap.php` en los tres directorios superiores al DocumentRoot (aquí: `/home/CPANEL_USER/public_html/womanlab-core` y luego `/home/CPANEL_USER/womanlab-core`). Si usas otra ubicación, define `WOMANLAB_CORE_PATH` con la ruta absoluta del núcleo; Composer debe estar en su directorio padre. Las URLs que se envían a TUU salen solo de `APP_URL` más `/pago/...` y `/api/webhook_tuu.php`; no dependen de carpetas físicas.
+
+### Migrar desde un despliegue anterior con `/public_html/` en la URL
+
+1. Haz un respaldo del DocumentRoot actual y de `womanlab-core/.env`.
+2. Vacía el DocumentRoot del subdominio (incluidos `index.php` raíz, la carpeta `public_html/` interna y cualquier copia de `womanlab-core`/`vendor` que haya quedado dentro) y sube el contenido de `tienda_public/`.
+3. Mueve `womanlab-core/` y `vendor/` a `/home/CPANEL_USER/` si estaban dentro de la raíz web, conservando el `.env` y `uploads/images`.
+4. Ajusta `PUBLIC_UPLOAD_DIR` a `<DocumentRoot>/uploads/images` y comprueba que `https://tienda.womanlab.cl/public_html/` ya no existe (404) y que `https://tienda.womanlab.cl/admin/` y `https://tienda.womanlab.cl/admin` (sin `/`) responden.
+5. En un entorno con Phusion Passenger heredado de la raíz de la cuenta, el `.htaccess` incluye `PassengerEnabled off`; si aún ves errores `Could not spawn process for application`, revisa **Setup Node.js App / Python App** y elimina o corrige la aplicación heredada.
 
 Selecciona PHP 8.2 o superior y habilita `pdo_mysql`, `curl`, `mbstring`, `fileinfo`, `openssl` y JSON. En SSH o Terminal de cPanel:
 
@@ -38,7 +52,7 @@ cd /home/CPANEL_USER
 composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative
 cp -n womanlab-core/.env.example womanlab-core/.env
 chmod 600 womanlab-core/.env
-mkdir -p womanlab-core/logs public_html/uploads/images
+mkdir -p womanlab-core/logs public_html/tienda.womanlab.cl/uploads/images
 chmod 700 womanlab-core/logs
 ```
 
@@ -50,7 +64,20 @@ Crea base y usuario desde cPanel y anota los nombres completos. En phpMyAdmin se
 
 En una base existente con el esquema anterior, realiza un respaldo y aplica una sola vez `database/migrations/0003_tuu_callback_signature.sql` y `database/migrations/0004_tuu_callback_message.sql` si faltan esas columnas. No las apliques a una base nueva creada con el esquema actualizado, que ya las incluye.
 
-Configura en privado `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `APP_URL`, `TUU_API_URL`, `TUU_ACCOUNT_ID`, `TUU_SECRET_KEY` y `PUBLIC_UPLOAD_DIR`. Usa `APP_URL=https://tudominio.cl` como origen HTTPS sin ruta. El cliente construye `/api/webhook_tuu.php`, `/pago/exito.php` y `/pago/cancelado.php`. Para pruebas usa exclusivamente credenciales sandbox y el endpoint de integración publicado por TUU. No mezcles credenciales o endpoints de ambientes.
+Configura en privado `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `APP_URL`, `TUU_API_URL`, `TUU_ACCOUNT_ID`, `TUU_SECRET_KEY` y `PUBLIC_UPLOAD_DIR`. La llave secreta debe llamarse exactamente `TUU_SECRET_KEY` (el bootstrap y el webhook aceptan `TUU_API_KEY` y `TUU_WEBHOOK_SECRET` como alias y, como respaldo, leen `womanlab-core/.env` directamente, pero renombra la variable). Usa `APP_URL=https://tienda.womanlab.cl` como origen HTTPS sin ruta. El cliente construye `/api/webhook_tuu.php`, `/pago/exito.php` y `/pago/cancelado.php`. Para pruebas usa exclusivamente credenciales sandbox y el endpoint de integración publicado por TUU. No mezcles credenciales o endpoints de ambientes.
+
+## Diagnóstico TUU y registro del callback
+
+`test_tuu_diagnostico.php` verifica (A) de dónde se lee `TUU_SECRET_KEY`, `TUU_ACCOUNT_ID` y `TUU_API_URL` (`getenv`, `$_ENV`, `$_SERVER` y `.env`), (B) la concatenación y el HMAC-SHA256 contra un callback real firmado por el sandbox y (C) la simulación interna del callback de una orden. No imprime la llave (solo longitud y huella).
+
+```bash
+cd /home/CPANEL_USER/public_html/tienda.womanlab.cl
+php test_tuu_diagnostico.php
+```
+
+Por web solo responde si defines `TUU_DIAG_TOKEN` en el `.env` y abres `https://tienda.womanlab.cl/test_tuu_diagnostico.php?token=VALOR`; sin token responde 404. **Elimínalo del servidor al terminar.** El vector de la documentación TUU (`x_account_id=82121521`) no es reproducible porque el ejemplo omite campos ("otros campos x_*"); por eso el script lo reporta como aviso y valida el algoritmo con un retorno real del sandbox.
+
+Cada llamada al webhook queda en `womanlab-core/logs/webhook_tuu.log`: cuerpo recibido, cadena firmada, firma recibida frente a la calculada, origen de la llave (sin su valor) y resultado. Es temporal: contiene datos de pedidos; rota o borra el archivo después de depurar.
 
 Activa AutoSSL y verifica certificado, nombre de dominio y redirección HTTP 308 a HTTPS. El `.htaccess` usa `HTTPS`, no confía en `X-Forwarded-Proto` enviado por un cliente. Si hay un proxy que termina TLS, solicita al proveedor una configuración de servidor que identifique únicamente proxies de confianza y establezca correctamente HTTPS; si no, la redirección puede entrar en bucle. No uses la cabecera recibida directamente del cliente como prueba de HTTPS. El callback debe apuntar directamente a HTTPS.
 

@@ -6,7 +6,7 @@ Esta guía prepara el hosting y la base de datos. El checkout está desactivado 
 
 ## 1. Subida de archivos
 
-En cPanel > **Dominios**, comprueba el DocumentRoot asignado a `shop.womanlab.cl`. El siguiente ejemplo supone `/home/USUARIO/public_html/shop`; si cPanel muestra otra ruta, usa esa ruta exacta en los comandos. No configures la raíz del repositorio como DocumentRoot: expone archivos privados.
+En cPanel > **Dominios**, comprueba el DocumentRoot asignado al subdominio (esta guía usa `shop.womanlab.cl`; para `tienda.womanlab.cl` consulta `cpanel/DEPLOY_CPANEL.md`). Se copia el **contenido** de `tienda_public/` a ese DocumentRoot. El siguiente ejemplo supone `/home/USUARIO/public_html/shop`; si cPanel muestra otra ruta, usa esa ruta exacta en los comandos. No configures la raíz del repositorio como DocumentRoot: expone archivos privados.
 
 ```text
 /home/USUARIO/composer.json
@@ -25,7 +25,7 @@ Desde la raíz del proyecto local, con SSH habilitado y sustituyendo los datos r
 
 ```bash
 rsync -av --exclude='.env' --exclude='logs/' --exclude='tests/' womanlab-core/ USUARIO@SERVIDOR:/home/USUARIO/womanlab-core/
-rsync -av --exclude='uploads/images/' public_html/ USUARIO@SERVIDOR:/home/USUARIO/public_html/shop/
+rsync -av --exclude='uploads/images/' tienda_public/ USUARIO@SERVIDOR:/home/USUARIO/public_html/shop/
 scp composer.json composer.lock USUARIO@SERVIDOR:/home/USUARIO/
 ssh USUARIO@SERVIDOR
 cd /home/USUARIO

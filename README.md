@@ -6,15 +6,15 @@ Contraseña temporal: AuditOnly-2026-Test!
 
 
 
-php -S localhost:3390 -t public_html
+php -S localhost:3390 -t tienda_public
 
-## Subdominio shop.womanlab.cl
+## Subdominio tienda.womanlab.cl
 
-La versión PHP conectada a MariaDB está en `public_html/`; ejecuta `php -S localhost:3390 -t public_html` para abrirla en local. En cPanel, configura el DocumentRoot de `shop.womanlab.cl` como la carpeta pública de ese subdominio, nunca como la raíz del repositorio. Mantén `womanlab-core/`, `vendor/` y `.env` fuera de todas las raíces web. Consulta la guía `cpanel/DESPLIEGUE_FINAL.md` para las rutas, la conexión y los logs privados.
+La versión PHP conectada a MariaDB está en `tienda_public/`; ejecuta `php -S localhost:3390 -t tienda_public` para abrirla en local. En cPanel, copia el **contenido** de `tienda_public/` a la raíz web del subdominio (su DocumentRoot), nunca la raíz del repositorio: las URLs públicas no deben incluir `public_html` ni `tienda_public`. Mantén `womanlab-core/`, `vendor/` y `.env` fuera de todas las raíces web. Consulta la guía `cpanel/DEPLOY_CPANEL.md` para las rutas, la conexión, los logs privados y `test_tuu_diagnostico.php`.
 
 ## Guía de Despliegue en Render.com
 
-Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `public_html` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
+Este despliegue usa PHP 8.2 y Apache en Docker. Render sirve únicamente `tienda_public` desde `/var/www/html`; el código privado y Composer quedan en `/var/www/womanlab-core` y `/var/www/vendor`. No se incluye `.env` en la imagen. Se necesita una base MySQL o MariaDB externa accesible desde Render.
 
 **Pagos aún no aptos para producción:** el webhook valida el formulario firmado y procesa estados de forma idempotente, pero la interoperabilidad de esta cuenta, el identificador de transacción y la conciliación deben validarse con TUU. El checkout está desactivado por defecto; `TUU_CHECKOUT_ENABLED=1` permite iniciar pagos con la configuración seleccionada. Mantén `0` en producción hasta completar pruebas sandbox y validación del proveedor.
 

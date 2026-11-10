@@ -6,9 +6,11 @@ namespace WomanLab\Controllers;
 use PDO;
 use Throwable;
 use WomanLab\Services\TuuCallback;
+use WomanLab\Services\TuuClient;
 use WomanLab\Services\WebhookSignature;
 use WomanLab\Support\ApiResponse;
 use WomanLab\Support\DebugLog;
+use WomanLab\Support\TuuConfig;
 
 final class WebhookController
 {
@@ -35,10 +37,11 @@ final class WebhookController
             DebugLog::write('WEBHOOK RECHAZO', ['unsupported_media_type' => $contentType]);
             ApiResponse::fail('unsupported_media_type', 415);
         }
-        $secret = $_ENV['TUU_SECRET_KEY'] ?? '';
-        $account = $_ENV['TUU_ACCOUNT_ID'] ?? '';
+        $secretInfo = TuuConfig::resolveSecret();
+        $secret = $secretInfo['value'] ?? '';
+        $account = TuuConfig::get('TUU_ACCOUNT_ID')['value'] ?? '';
         if ($secret === '' || $account === '') {
-            DebugLog::write('WEBHOOK RECHAZO', 'webhook_not_configured');
+            DebugLog::write('WEBHOOK RECHAZO', ['webhook_not_configured' => ['secret_source' => $secretInfo['source'], 'account_set' => $account !== '']]);
             ApiResponse::fail('webhook_not_configured', 503);
         }
         $raw = file_get_contents('php://input', false, null, 0, 65537);
@@ -47,19 +50,18 @@ final class WebhookController
             DebugLog::write('WEBHOOK RECHAZO', 'invalid_form');
             ApiResponse::fail('invalid_form', 400);
         }
-        if (!WebhookSignature::valid($fields, $secret)) {
-            $debugSigned = array_filter($fields, static fn (string $k): bool => str_starts_with($k, 'x_') && $k !== 'x_signature', ARRAY_FILTER_USE_KEY);
-            ksort($debugSigned, SORT_STRING);
-            $debugCanonical = '';
-            foreach ($debugSigned as $k => $v) {
-                $debugCanonical .= $k . $v;
-            }
-            DebugLog::write('WEBHOOK RECHAZO firma inválida', [
-                'fields' => $fields,
-                'canonical' => $debugCanonical,
-                'firma_recibida' => $fields['x_signature'] ?? null,
-                'firma_calculada' => hash_hmac('sha256', $debugCanonical, $secret),
-            ]);
+        $canonical = TuuClient::canonicalString($fields);
+        $isValid = WebhookSignature::valid($fields, $secret);
+        DebugLog::write('WEBHOOK firma', [
+            'secret_source' => $secretInfo['source'],
+            'secret_length' => strlen($secret),
+            'POST' => $fields,
+            'cadena_firmada' => $canonical,
+            'firma_recibida' => $fields['x_signature'] ?? null,
+            'firma_calculada' => hash_hmac('sha256', $canonical, $secret),
+            'coincide' => $isValid,
+        ]);
+        if (!$isValid) {
             error_log('TUU callback rejected: invalid signature from ' . substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 64));
             ApiResponse::fail('invalid_signature', 400);
         }

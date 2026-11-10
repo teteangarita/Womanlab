@@ -4,7 +4,7 @@
 		{
 			"label": "Womanlab PHP local",
 			"type": "shell",
-			"command": "php -S localhost:8000 -t public_html",
+			"command": "php -S localhost:8000 -t tienda_public",
 			"isBackground": true,
 			"problemMatcher": []
 		}

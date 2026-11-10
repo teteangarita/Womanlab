@@ -5,5 +5,5 @@ womanlab-core/.env
 womanlab-core/.env.*
 !womanlab-core/.env.example
 womanlab-core/logs
-public_html/uploads/images/*
-!public_html/uploads/images/.htaccess
+tienda_public/uploads/images/*
+!tienda_public/uploads/images/.htaccess

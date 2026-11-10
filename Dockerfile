@@ -11,7 +11,7 @@ RUN apt-get update \
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY composer.json composer.lock /var/www/
 COPY womanlab-core /var/www/womanlab-core
-COPY public_html /var/www/html
+COPY tienda_public /var/www/html
 COPY docker/render.conf /etc/apache2/conf-available/womanlab-render.conf
 COPY docker/entrypoint.sh /usr/local/bin/womanlab-entrypoint
 

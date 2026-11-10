@@ -21,13 +21,11 @@ services:
         value: https://frontend-api.payment.haulmer.dev/v1/payment
       - key: TUU_ACCOUNT_ID
         sync: false
-      - key: TUU_API_KEY
+      - key: TUU_SECRET_KEY
         sync: false
       - key: TUU_CHECKOUT_ENABLED
         value: "0"
       - key: TUU_PAYMENT_HOSTS
-        sync: false
-      - key: TUU_WEBHOOK_SECRET
         sync: false
       - key: APP_URL
         sync: false

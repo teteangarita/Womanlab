@@ -39,8 +39,7 @@ final class TuuClient
 
         $nameParts = preg_split('/\s+/u', trim((string) ($customer['name'] ?? '')), 2) ?: [];
         $reference = (string) $order['codigo_orden'];
-        $basePath = function_exists('womanlab_base_path') ? womanlab_base_path() : '';
-        $publicUrl = $appUrl . $basePath;
+        $publicUrl = $appUrl;
         $cancelUrl = $publicUrl . '/pago/cancelado.php';
         $completeUrl = $publicUrl . '/pago/exito.php';
         $webhookUrl = $publicUrl . '/api/webhook_tuu.php';
@@ -61,19 +60,12 @@ final class TuuClient
         ];
         $payload['x_signature'] = self::signFields($payload, $secretKey);
 
-        $debugFields = array_filter($payload, static fn (string $k): bool => $k !== 'x_signature', ARRAY_FILTER_USE_KEY);
-        ksort($debugFields, SORT_STRING);
-        $debugCanonical = '';
-        foreach ($debugFields as $k => $v) {
-            $debugCanonical .= $k . (string) $v;
-        }
         DebugLog::write('TUU createCheckout payload final', [
             'checkoutUrl' => $checkoutUrl,
             'order' => $order,
             'customer' => $customer,
             'publicUrl' => $publicUrl,
-            'basePath' => $basePath,
-            'canonical_string_firmada' => $debugCanonical,
+            'canonical_string_firmada' => self::canonicalString($payload),
             'payload' => $payload,
         ]);
 
@@ -98,6 +90,11 @@ final class TuuClient
 
     public static function signFields(array $fields, string $secret): string
     {
+        return hash_hmac('sha256', self::canonicalString($fields), $secret);
+    }
+
+    public static function canonicalString(array $fields): string
+    {
         $signedFields = array_filter($fields, static fn (string $key): bool => str_starts_with($key, 'x_') && $key !== 'x_signature', ARRAY_FILTER_USE_KEY);
         ksort($signedFields, SORT_STRING);
         $canonical = '';
@@ -107,7 +104,7 @@ final class TuuClient
             }
             $canonical .= $key . (string) $value;
         }
-        return hash_hmac('sha256', $canonical, $secret);
+        return $canonical;
     }
 
     public function issueDocument(array $order, array $items): array
