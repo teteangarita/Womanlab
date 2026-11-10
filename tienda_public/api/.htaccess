@@ -9,4 +9,10 @@ Options -Indexes
 # TUU llama desde IPs externas; la firma se valida en PHP.
 <Files "webhook_tuu.php">
   Require all granted
+  <IfModule mod_headers.c>
+    Header always unset Content-Security-Policy
+    Header always unset X-Frame-Options
+    Header always unset Referrer-Policy
+    Header always unset Permissions-Policy
+  </IfModule>
 </Files>

@@ -32,11 +32,6 @@ final class WebhookController
             DebugLog::write('WEBHOOK RECHAZO', 'method_not_allowed');
             ApiResponse::fail('method_not_allowed', 405);
         }
-        $contentType = strtolower(trim(explode(';', $_SERVER['CONTENT_TYPE'] ?? '', 2)[0]));
-        if ($contentType !== 'application/x-www-form-urlencoded') {
-            DebugLog::write('WEBHOOK RECHAZO', ['unsupported_media_type' => $contentType]);
-            ApiResponse::fail('unsupported_media_type', 415);
-        }
         $secretInfo = TuuConfig::resolveSecret();
         $secret = $secretInfo['value'] ?? '';
         $account = TuuConfig::get('TUU_ACCOUNT_ID')['value'] ?? '';
@@ -45,8 +40,8 @@ final class WebhookController
             ApiResponse::fail('webhook_not_configured', 503);
         }
         $raw = file_get_contents('php://input', false, null, 0, 65537);
-        $fields = is_string($raw) ? WebhookSignature::parse($raw) : null;
-        if ($fields === null) {
+        $fields = WebhookSignature::capture($_POST, is_string($raw) ? $raw : '');
+        if ($fields === [] || array_filter($fields, static fn ($value): bool => !is_string($value)) !== []) {
             DebugLog::write('WEBHOOK RECHAZO', 'invalid_form');
             ApiResponse::fail('invalid_form', 400);
         }
@@ -62,6 +57,11 @@ final class WebhookController
             'coincide' => $isValid,
         ]);
         if (!$isValid) {
+            DebugLog::write('WEBHOOK firma inválida', [
+                'cadena_concatenada' => $canonical,
+                'firma_recibida' => $fields['x_signature'] ?? null,
+                'firma_calculada' => hash_hmac('sha256', $canonical, $secret),
+            ], 'tuu_webhook_error.log');
             error_log('TUU callback rejected: invalid signature from ' . substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 64));
             ApiResponse::fail('invalid_signature', 400);
         }

@@ -31,6 +31,19 @@ final class TuuCallback
         return null;
     }
 
+    /** Callback POST y retorno GET firmado comparten esta validación y el procesamiento idempotente. */
+    public function handleSigned(array $fields, string $secret, string $account): array
+    {
+        if (!WebhookSignature::valid($fields, $secret)) {
+            return ['invalid_signature', 400];
+        }
+        $error = self::validate($fields, $account);
+        if ($error !== null) {
+            return [$error, 422];
+        }
+        return $this->process($fields);
+    }
+
     public function process(array $fields): array
     {
         try {

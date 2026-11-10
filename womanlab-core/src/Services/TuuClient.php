@@ -50,7 +50,7 @@ final class TuuClient
             'x_customer_email' => (string) ($customer['email'] ?? ''),
             'x_customer_first_name' => $nameParts[0] ?? '',
             'x_customer_last_name' => $nameParts[1] ?? 'Cliente',
-            'x_customer_phone' => (string) (($customer['phone'] ?? '') ?: '+56900000000'),
+            'x_customer_phone' => self::normalizePhone((string) ($customer['phone'] ?? '')),
             'x_description' => 'Compra Womanlab - Orden ' . $reference,
             'x_reference' => $reference,
             'x_shop_name' => 'Womanlab',
@@ -86,6 +86,24 @@ final class TuuClient
         }
 
         return ['payment_url' => $paymentUrl, 'token' => $token, 'transaction_id' => $response['transaction_id'] ?? null];
+    }
+
+    public static function normalizePhone(string $phone): string
+    {
+        $phone = trim($phone);
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '+56900000000';
+        }
+        if (str_starts_with($phone, '+')) {
+            return '+' . $digits;
+        }
+        return match (true) {
+            strlen($digits) === 8 => '+569' . $digits,
+            strlen($digits) === 9 => '+56' . $digits,
+            strlen($digits) === 11 && str_starts_with($digits, '56') => '+' . $digits,
+            default => $phone,
+        };
     }
 
     public static function signFields(array $fields, string $secret): string

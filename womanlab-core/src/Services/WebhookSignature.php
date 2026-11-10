@@ -5,6 +5,16 @@ namespace WomanLab\Services;
 
 final class WebhookSignature
 {
+    /** Toma $_POST o, si está vacío, el cuerpo crudo, sin depender del Content-Type. */
+    public static function capture(array $post, string $raw): array
+    {
+        $payload = !empty($post) ? $post : [];
+        if (empty($payload)) {
+            parse_str($raw, $payload);
+        }
+        return $payload;
+    }
+
     public static function parse(string $raw): ?array
     {
         if ($raw === '' || strlen($raw) > 65536) {

@@ -52,7 +52,7 @@ $env = static function (string $key, string $default = ''): string {
 
 date_default_timezone_set($env('APP_TIMEZONE', 'America/Santiago'));
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
+if (!defined('WOMANLAB_STATELESS') && session_status() !== PHP_SESSION_ACTIVE) {
     session_name('womanlab_session');
     session_set_cookie_params([
         'lifetime' => 0,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace WomanLab\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use WomanLab\Services\TuuClient;
 use WomanLab\Services\WebhookSignature;
 
 final class WebhookSignatureTest extends TestCase
@@ -21,6 +22,22 @@ final class WebhookSignatureTest extends TestCase
         $fields['x_amount'] = '40000';
         $fields['x_signature'] = str_repeat('0', 64);
         self::assertFalse(WebhookSignature::valid($fields, 'test-secret'));
+    }
+
+    public function testCaptureAcceptsPostOrRawBodyRegardlessOfContentType(): void
+    {
+        $secret = 'test-secret';
+        $values = ['x_reference' => 'order-1', 'x_message' => ' Pago aprobado ', 'x_amount' => '1500.0'];
+        $signature = TuuClient::signFields($values, $secret);
+        $raw = http_build_query($values + ['x_signature' => $signature]);
+
+        $fromRaw = WebhookSignature::capture([], $raw);
+        self::assertSame(' Pago aprobado ', $fromRaw['x_message']);
+        self::assertTrue(WebhookSignature::valid($fromRaw, $secret));
+
+        $fromPost = WebhookSignature::capture($values + ['x_signature' => $signature], 'ignorado=1');
+        self::assertTrue(WebhookSignature::valid($fromPost, $secret));
+        self::assertSame([], WebhookSignature::capture([], ''));
     }
 
     public function testRejectsAmbiguousOrMalformedForms(): void

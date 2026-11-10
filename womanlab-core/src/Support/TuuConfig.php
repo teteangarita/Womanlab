@@ -51,11 +51,12 @@ final class TuuConfig
             '$_SERVER' => $_SERVER[$name] ?? null,
         ];
         foreach ($candidates as $source => $value) {
-            if (is_string($value) && $value !== '') {
+            $value = is_string($value) ? trim($value) : '';
+            if ($value !== '') {
                 return ['value' => $value, 'source' => $source . '[' . $name . ']'];
             }
         }
-        $fileValue = self::readEnvFile($envFile ?? dirname(__DIR__, 2) . '/.env')[$name] ?? '';
+        $fileValue = trim(self::readEnvFile($envFile ?? dirname(__DIR__, 2) . '/.env')[$name] ?? '');
         return $fileValue !== ''
             ? ['value' => $fileValue, 'source' => '.env[' . $name . ']']
             : ['value' => null, 'source' => 'none'];
