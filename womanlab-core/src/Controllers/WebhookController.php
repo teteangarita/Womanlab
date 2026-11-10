@@ -30,11 +30,6 @@ final class WebhookController
             DebugLog::write('WEBHOOK RECHAZO', 'method_not_allowed');
             ApiResponse::fail('method_not_allowed', 405);
         }
-        $contentType = strtolower(trim(explode(';', $_SERVER['CONTENT_TYPE'] ?? '', 2)[0]));
-        if ($contentType !== 'application/x-www-form-urlencoded') {
-            DebugLog::write('WEBHOOK RECHAZO', ['unsupported_media_type' => $contentType]);
-            ApiResponse::fail('unsupported_media_type', 415);
-        }
         $secret = $_ENV['TUU_SECRET_KEY'] ?? '';
         $account = $_ENV['TUU_ACCOUNT_ID'] ?? '';
         if ($secret === '' || $account === '') {
@@ -42,8 +37,8 @@ final class WebhookController
             ApiResponse::fail('webhook_not_configured', 503);
         }
         $raw = file_get_contents('php://input', false, null, 0, 65537);
-        $fields = is_string($raw) ? WebhookSignature::parse($raw) : null;
-        if ($fields === null) {
+        $fields = WebhookSignature::capture($_POST, is_string($raw) ? $raw : '');
+        if ($fields === [] || array_filter($fields, static fn ($value): bool => !is_string($value)) !== []) {
             DebugLog::write('WEBHOOK RECHAZO', 'invalid_form');
             ApiResponse::fail('invalid_form', 400);
         }
@@ -79,6 +74,9 @@ final class WebhookController
         if ($status !== 200) {
             ApiResponse::fail($result, $status);
         }
-        ApiResponse::json(['status' => 'ok']);
+        http_response_code(200);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'OK';
+        exit;
     }
 }

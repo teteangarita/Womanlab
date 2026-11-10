@@ -107,7 +107,21 @@ final class TuuClient
             }
             $canonical .= $key . (string) $value;
         }
-        return hash_hmac('sha256', $canonical, $secret);
+        return hash_hmac('sha256', $canonical, trim($secret));
+    }
+
+    /** Solo claves x_* sin x_signature, ksort SORT_STRING, clave.valor sin separadores. */
+    public function generarFirma(array $datos, string $secretKey): string
+    {
+        return self::signFields($datos, $secretKey);
+    }
+
+    public function verificarFirma(array $payload, string $secretKey): bool
+    {
+        if (empty($payload['x_signature']) || trim($secretKey) === '') {
+            return false;
+        }
+        return hash_equals($this->generarFirma($payload, $secretKey), (string) $payload['x_signature']);
     }
 
     public function issueDocument(array $order, array $items): array
